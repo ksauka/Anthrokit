@@ -59,7 +59,8 @@ class AppConfig:
         self._load_anthrokit_preset()
 
         # assistant identity and copy are derived from anthropomorphism
-        self.assistant_name = getattr(self, 'persona_name', "Luna" if self.show_anthropomorphic else "AI Assistant")
+        persona_name = getattr(self, 'persona_name', "")
+        self.assistant_name = persona_name if persona_name else ("Luna" if self.show_anthropomorphic else "AI Assistant")
         if self.show_anthropomorphic:
             self.assistant_intro = "Hi, I'm Luna—an AI assistant for credit pre-assessment. I'll guide you through a short check and explain the result if you'd like."
         else:
