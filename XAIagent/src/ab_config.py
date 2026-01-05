@@ -304,14 +304,18 @@ class AppConfig:
         """Return avatar path for high anthropomorphism, else None."""
         if not self.show_profile_pic:
             return None
+        
+        from pathlib import Path
+        base_dir = Path(__file__).parent.parent  # XAIagent directory
+        
         possible_paths = [
-            "assets/luna_avatar.png",
-            "images/assistant_avatar.png",
-            "data_questions/Luna_is_a_Dutch_customer_service_assistant_working_at_a_restaurant_she_is_27_years_old_Please_genera.png",
+            base_dir / "assets" / "luna_avatar.png",
+            base_dir / "images" / "assistant_avatar.png",
+            base_dir / "data_questions" / "Luna_is_a_Dutch_customer_service_assistant_working_at_a_restaurant_she_is_27_years_old_Please_genera.png",
         ]
         for path in possible_paths:
-            if os.path.exists(path):
-                return path
+            if path.exists():
+                return str(path)
         return None  # UI can fall back to initials
 
     def get_welcome_message(self):
