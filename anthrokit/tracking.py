@@ -158,7 +158,8 @@ def track_session_end(
     final_tone_config: Optional[Dict[str, Any]] = None,
     condition_label: Optional[str] = None,
     anthropomorphism_level: Optional[str] = None,
-    personality_adaptation: Optional[str] = None
+    personality_adaptation: Optional[str] = None,
+    generation_metadata: Optional[Dict[str, Any]] = None
 ):
     """Track the end of a user session with complete treatment documentation.
     
@@ -175,6 +176,7 @@ def track_session_end(
         condition_label: Human-readable condition (e.g., "HighA_Adapted")
         anthropomorphism_level: "high" or "low"
         personality_adaptation: "enabled" or "disabled"
+        generation_metadata: Metadata from generation_control (Phase 1)
         
     Example:
         track_session_end(
@@ -184,7 +186,8 @@ def track_session_end(
             final_tone_config={'warmth': 0.85, 'empathy': 0.72, ...},
             condition_label="HighA_Adapted",
             anthropomorphism_level="high",
-            personality_adaptation="enabled"
+            personality_adaptation="enabled",
+            generation_metadata={...}
         )
     """
     if 'session_tracking' not in st.session_state:
@@ -210,6 +213,9 @@ def track_session_end(
         "base_preset": base_preset or st.session_state.session_tracking.get('preset_config'),
         "personality_adjustments": personality_adjustments or {},
         "final_tone_config": final_tone_config or st.session_state.session_tracking.get('preset_config'),
+        
+        # Generation Control metadata (Phase 1)
+        "generation_metadata": generation_metadata or {},
         
         # Optional: outcomes if collected in-app (usually in Qualtrics instead)
         "outcomes": outcomes or {},

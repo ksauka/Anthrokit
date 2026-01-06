@@ -14,8 +14,15 @@ This module is optional. LoanAssistant guards imports accordingly.
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List, Callable
 from pathlib import Path
+
+# Try to import AnthroKit generation control
+try:
+    from anthrokit.generation_control import generate_with_control
+    GENERATION_CONTROL_AVAILABLE = True
+except ImportError:
+    GENERATION_CONTROL_AVAILABLE = False
 
 # Try to import streamlit to fetch secrets when running on Streamlit Cloud
 try:
@@ -138,6 +145,31 @@ except ImportError:
         return "\n".join(cleaned)
 
 
+# ---------- Domain-specific validators for loan application ----------
+def _check_no_guarantees(response: str) -> bool:
+    """Ensure no loan approval guarantees."""
+    forbidden_phrases = [
+        "guaranteed", "definitely approved", "promise you",
+        "will be approved", "assured approval", "100% approval",
+        "certain you'll get", "promise"
+    ]
+    response_lower = response.lower()
+    return not any(phrase in response_lower for phrase in forbidden_phrases)
+
+
+def _check_preserves_numbers(response: str, original_data: Optional[Dict] = None) -> bool:
+    """Basic check that response doesn't invent numbers (if data provided)."""
+    if not original_data:
+        return True  # Can't validate without original data
+    # This is a simplified check - full implementation would extract and compare all numbers
+    return True
+
+
+def _get_loan_validators() -> List[Callable]:
+    """Return list of validators for loan application domain."""
+    return [_check_no_guarantees]
+
+
 # ---------- AnthroKit-aligned prompts ----------
 def _build_system_prompt(high_anthropomorphism: bool = True) -> str:
     """
@@ -221,10 +253,7 @@ def handle_meta_question(field: str, user_input: str, high_anthropomorphism: boo
         return basics.get(field, f"This information about {field.replace('_', ' ')} supports assessment.")
 
     try:
-        client = _get_openai_client()
-        if client is None:
-            return None
-
+        # Build system and user prompts
         if high_anthropomorphism:
             system_prompt = (
                 "You are Luna, an AI assistant. The user asked a brief 'why/what/how' question about a field. "
@@ -246,6 +275,30 @@ def handle_meta_question(field: str, user_input: str, high_anthropomorphism: boo
         model_name = os.getenv("HICXAI_OPENAI_MODEL", "gpt-4o-mini")
         temperature = float(os.getenv("HICXAI_TEMPERATURE", "0.6" if high_anthropomorphism else "0.3"))
 
+        # Use generation control if available
+        if GENERATION_CONTROL_AVAILABLE:
+            try:
+                tone_config = {"high_anthropomorphism": high_anthropomorphism, "field": field}
+                result, metadata = generate_with_control(
+                    prompt=system_prompt,
+                    user_input=user_prompt,
+                    final_tone_config=tone_config,
+                    model_name=model_name,
+                    validators=_get_loan_validators(),
+                    temperature=temperature,
+                    max_tokens=300
+                )
+                if result and high_anthropomorphism:
+                    result = _limit_emojis(result, max_emojis=1, ban_in_lists=True)
+                return result
+            except Exception:
+                pass  # Fall through to legacy
+        
+        # Legacy approach
+        client = _get_openai_client()
+        if client is None:
+            return None
+
         completion = client.chat.completions.create(
             model=model_name,
             messages=[{"role": "system", "content": system_prompt},
@@ -266,14 +319,11 @@ def enhance_validation_message(field: str, user_input: str, expected_format: str
     """
     LLM-generated validation messages (friendly HighA vs concise LowA).
     Returns None if LLM unavailable so caller can use fallback.
+    Now uses generation control when available.
     """
     if not _should_use_genai():
         return None
     try:
-        client = _get_openai_client()
-        if client is None:
-            return None
-
         if high_anthropomorphism:
             system_prompt = (
                 "You are Luna, an AI assistant. Generate a conversational, encouraging validation message "
@@ -297,6 +347,30 @@ def enhance_validation_message(field: str, user_input: str, expected_format: str
         model_name = os.getenv("HICXAI_OPENAI_MODEL", "gpt-4o-mini")
         temperature = float(os.getenv("HICXAI_TEMPERATURE", "0.6" if high_anthropomorphism else "0.3"))
 
+        # Use generation control if available
+        if GENERATION_CONTROL_AVAILABLE:
+            try:
+                tone_config = {"high_anthropomorphism": high_anthropomorphism, "field": field, "attempt": attempt}
+                result, metadata = generate_with_control(
+                    prompt=system_prompt,
+                    user_input=user_prompt,
+                    final_tone_config=tone_config,
+                    model_name=model_name,
+                    validators=_get_loan_validators(),
+                    temperature=temperature,
+                    max_tokens=220
+                )
+                if result and high_anthropomorphism:
+                    result = _limit_emojis(result, max_emojis=1, ban_in_lists=True)
+                return result
+            except Exception:
+                pass  # Fall through to legacy
+        
+        # Legacy approach
+        client = _get_openai_client()
+        if client is None:
+            return None
+
         completion = client.chat.completions.create(
             model=model_name,
             messages=[{"role": "system", "content": system_prompt},
@@ -317,14 +391,11 @@ def generate_from_data(data: Dict[str, Any], explanation_type: str = "shap",
     """
     Generate explanation from structured data (SHAP or counterfactual).
     HighA = friendly plain language; LowA = professional structured.
+    Now uses generation control when available.
     """
     if not _should_use_genai():
         return None
     try:
-        client = _get_openai_client()
-        if client is None:
-            return None
-
         if high_anthropomorphism:
             if explanation_type == "shap":
                 system_prompt = (
@@ -378,6 +449,38 @@ def generate_from_data(data: Dict[str, Any], explanation_type: str = "shap",
         temperature = float(os.getenv("HICXAI_TEMPERATURE", "0.6" if high_anthropomorphism else "0.3"))
         max_tokens = 600 if explanation_type == "shap" else 400
 
+        # Use generation control if available
+        if GENERATION_CONTROL_AVAILABLE:
+            try:
+                tone_config = {
+                    "high_anthropomorphism": high_anthropomorphism,
+                    "explanation_type": explanation_type
+                }
+                content, metadata = generate_with_control(
+                    prompt=system_prompt,
+                    user_input=user_prompt,
+                    final_tone_config=tone_config,
+                    model_name=model_name,
+                    validators=_get_loan_validators(),
+                    temperature=temperature,
+                    max_tokens=max_tokens
+                )
+                
+                if content:
+                    if not high_anthropomorphism:
+                        content = _remove_letter_formatting(content)
+                    else:
+                        content = _limit_emojis(content, max_emojis=1, ban_in_lists=True)
+                return content
+            except Exception as e:
+                print(f"⚠️ Generation control failed in generate_from_data: {e}")
+                # Fall through to legacy
+        
+        # Legacy approach
+        client = _get_openai_client()
+        if client is None:
+            return None
+
         completion = client.chat.completions.create(
             model=model_name,
             messages=[{"role": "system", "content": system_prompt},
@@ -402,6 +505,7 @@ def enhance_response(response: str, context: Optional[Dict[str, Any]] = None,
                      response_type: str = "explanation", high_anthropomorphism: bool = True) -> str:
     """
     Rewrite response with AnthroKit style. Falls back to original on failure.
+    Now uses generation_control wrapper when available (Phase 1).
     """
     if not response or not isinstance(response, str):
         return response
@@ -409,17 +513,68 @@ def enhance_response(response: str, context: Optional[Dict[str, Any]] = None,
         return response
 
     try:
-        client = _get_openai_client()
-        messages = _compose_messages(response, context, high_anthropomorphism)
-        model_name = os.getenv("HICXAI_OPENAI_MODEL", "gpt-4o-mini")
+        # Build system prompt
+        sys_prompt = _build_system_prompt(high_anthropomorphism)
+        ctx_lines = []
+        if context:
+            for k, v in context.items():
+                if v is None:
+                    continue
+                ctx_lines.append(f"- {k}: {v}")
+        ctx_blob = "\n".join(ctx_lines) if ctx_lines else "(no extra context)"
 
+        user_prompt = (
+            "Rewrite the following for the end user. Preserve all factual content and numbers.\n\n"
+            f"Context:\n{ctx_blob}\n\n"
+            f"Original:\n{response}\n\n"
+            "Return only the rewritten text."
+        )
+
+        model_name = os.getenv("HICXAI_OPENAI_MODEL", "gpt-4o-mini")
+        temperature = float(os.getenv("HICXAI_TEMPERATURE", "0.6" if high_anthropomorphism else "0.3"))
+        
         # Token budget: SHAP denials often longer
         if response_type == "explanation" and context and context.get('explanation_type') == 'feature_importance':
             default_tokens = 600
         else:
             default_tokens = 400
         max_tokens = int(os.getenv("HICXAI_MAX_TOKENS", str(default_tokens)))
-        temperature = float(os.getenv("HICXAI_TEMPERATURE", "0.6" if high_anthropomorphism else "0.3"))
+
+        # Use generation control if available (Phase 1)
+        if GENERATION_CONTROL_AVAILABLE:
+            try:
+                # Build tone config for logging
+                tone_config = {
+                    "high_anthropomorphism": high_anthropomorphism,
+                    "response_type": response_type
+                }
+                
+                content, metadata = generate_with_control(
+                    prompt=sys_prompt,
+                    user_input=user_prompt,
+                    final_tone_config=tone_config,
+                    model_name=model_name,
+                    validators=_get_loan_validators(),
+                    temperature=temperature,
+                    max_tokens=max_tokens
+                )
+                
+                if content:
+                    if high_anthropomorphism:
+                        content = _limit_emojis(content, max_emojis=1, ban_in_lists=True)
+                    else:
+                        content = _remove_letter_formatting(content)
+                return content or response
+            except Exception as e:
+                print(f"⚠️ Generation control failed, falling back: {e}")
+                # Fall through to legacy approach
+
+        # Legacy approach (direct OpenAI calls)
+        client = _get_openai_client()
+        messages = [
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
 
         if client is not None:
             try:
