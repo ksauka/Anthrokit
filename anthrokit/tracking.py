@@ -17,10 +17,31 @@ from typing import Dict, Any, Optional
 import json
 import hashlib
 import uuid
+import os
+import requests
+import base64
 
 
-# Session log file
+# Session log file (local fallback only)
 SESSION_LOG_PATH = Path(__file__).parent.parent / "data" / "session_tracking.jsonl"
+
+# GitHub storage configuration (from Streamlit secrets)
+def _get_github_config() -> tuple[str, str]:
+    """Get GitHub token and repo from Streamlit secrets or environment.
+    
+    Returns:
+        (github_token, github_repo) tuple
+    """
+    try:
+        # Try Streamlit secrets first (for deployed apps)
+        github_token = st.secrets.get("GITHUB_TOKEN")
+        github_repo = st.secrets.get("GITHUB_REPO")
+    except:
+        # Fall back to environment variables (for local dev)
+        github_token = os.getenv("GITHUB_TOKEN")
+        github_repo = os.getenv("GITHUB_REPO")
+    
+    return github_token, github_repo
 
 
 def get_or_create_session_id() -> str:
@@ -150,6 +171,7 @@ def track_interaction(
 
 
 def track_session_end(
+    participant_id: Optional[str] = None,
     outcomes: Optional[Dict[str, float]] = None,
     feedback: Optional[Dict[str, Any]] = None,
     personality_traits: Optional[Dict[str, float]] = None,
@@ -167,6 +189,7 @@ def track_session_end(
     Outcomes are measured separately in Qualtrics and linked via session_id.
     
     Args:
+        participant_id: Prolific ID for data linkage and integrity verification
         outcomes: Optional outcome metrics (if collected in-app)
         feedback: Optional user feedback
         personality_traits: Raw TIPI Big 5 scores (1-7 scale)
@@ -198,6 +221,7 @@ def track_session_end(
     record = {
         "event": "session_end",
         "session_id": session_id,
+        "participant_id": participant_id,  # Prolific ID for data linkage
         "user_id": st.session_state.get('user_id'),
         "timestamp": datetime.now().isoformat(),
         "duration_seconds": _calculate_session_duration(),
@@ -245,11 +269,84 @@ def get_session_summary() -> Dict[str, Any]:
 
 
 def _append_to_log(record: Dict[str, Any]):
-    """Append record to JSONL log file."""
-    SESSION_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    """Append record to GitHub repo (private) or local file as fallback."""
+    github_token, github_repo = _get_github_config()
     
+    if github_token and github_repo:
+        # Save to GitHub (primary method for Streamlit Cloud)
+        success = _save_to_github(record, github_token, github_repo)
+        if success:
+            return  # Successfully saved to GitHub
+        else:
+            print("⚠️ GitHub save failed, falling back to local file")
+    
+    # Fallback: Save to local file (for development/testing)
+    SESSION_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(SESSION_LOG_PATH, 'a') as f:
         f.write(json.dumps(record) + '\n')
+
+
+def _save_to_github(record: Dict[str, Any], github_token: str, github_repo: str) -> bool:
+    """Save session record to GitHub repo.
+    
+    Creates/appends to: logs/session_tracking.jsonl
+    
+    Args:
+        record: Session record dictionary
+        github_token: GitHub personal access token
+        github_repo: Repository in format 'owner/repo'
+        
+    Returns:
+        True if saved successfully, False otherwise
+    """
+    try:
+        # File path in repo
+        file_path = "logs/session_tracking.jsonl"
+        api_url = f"https://api.github.com/repos/{github_repo}/contents/{file_path}"
+        
+        headers = {
+            "Authorization": f"token {github_token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        # Get existing file content
+        r = requests.get(api_url, headers=headers, timeout=10)
+        
+        if r.status_code == 200:
+            # File exists - append to it
+            file_data = r.json()
+            sha = file_data['sha']
+            existing_content = base64.b64decode(file_data['content']).decode('utf-8')
+            new_content = existing_content + json.dumps(record) + '\n'
+        elif r.status_code == 404:
+            # File doesn't exist - create it
+            sha = None
+            new_content = json.dumps(record) + '\n'
+        else:
+            print(f"GitHub API error (GET): {r.status_code} {r.text}")
+            return False
+        
+        # Upload updated content
+        data = {
+            "message": f"Log session: {record.get('session_id', 'unknown')[:8]}",
+            "content": base64.b64encode(new_content.encode()).decode(),
+            "branch": "main"
+        }
+        if sha:
+            data["sha"] = sha
+        
+        r = requests.put(api_url, headers=headers, json=data, timeout=10)
+        
+        if r.status_code in [200, 201]:
+            print(f"✅ Session logged to GitHub: {github_repo}/logs/")
+            return True
+        else:
+            print(f"GitHub API error (PUT): {r.status_code} {r.text}")
+            return False
+            
+    except Exception as e:
+        print(f"Error saving to GitHub: {e}")
+        return False
 
 
 def _calculate_session_duration() -> float:

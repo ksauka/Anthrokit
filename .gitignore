@@ -1,0 +1,87 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.Zone.Identifier
+
+# Project specific
+XAIagent/logs/*.txt
+XAIagent/logs/*.log
+XAIagent/feedback/*.json
+XAIagent/models/*.pkl
+XAIagent/models/*.pth
+!XAIagent/models/.gitkeep
+!XAIagent/logs/.gitkeep
+!XAIagent/feedback/.gitkeep
+
+# Streamlit
+.streamlit/secrets.toml
+
+# HuggingFace
+.huggingface/token
+
+# Personal markdown files (keep project documentation)
+docus.md
+
+# Temporary files
+*.tmp
+*.backup
+*.old
+*.bak
+*~
+*.swp
+*.swo
+.*.swp
+.*.swo
+poetry.lock
+*:Zone.Identifier
+*.Zone.Identifier
+temp_*
+tmp_*
+scratch_*
+.temp/
+.tmp/
+.cache/
+
+# Test files
+test_*.py
+*_test.py
+validate_*.py
+check_*.py
+
+# Personal scripts
+XAIagent/scripts/merge_app_qualtrics_data.py

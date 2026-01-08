@@ -205,10 +205,12 @@ def _build_final_return(done=True):
     pid_ss  = st.session_state.get("pid", "")
     cond_ss = st.session_state.get("cond", "")
     prolific_pid_ss = st.session_state.get("prolific_pid", "")
+    session_id_ss = st.session_state.get("session_id", "")
 
     if "pid"  not in q and pid_ss:  q["pid"]  = pid_ss
     if "cond" not in q and cond_ss: q["cond"] = cond_ss
     if "PROLIFIC_PID" not in q and prolific_pid_ss: q["PROLIFIC_PID"] = prolific_pid_ss
+    if "session_id" not in q and session_id_ss: q["session_id"] = session_id_ss  # KEY for data linkage
     if "done" not in q:             q["done"] = "1" if done else "0"
 
     return urlunparse(p._replace(query=urlencode(q, doseq=True)))
@@ -228,8 +230,47 @@ if "cond" not in st.session_state and _cond_in:
 if "return_raw" not in st.session_state and _ret_in:
     st.session_state.return_raw = _ret_in
 # Store Prolific ID separately for research tracking
-if "prolific_pid" not in st.session_state and _prolific_pid:
-    st.session_state.prolific_pid = _prolific_pid
+# Priority: 1) PROLIFIC_PID param (direct from Prolific)
+#           2) pid param (from Qualtrics embedded data)
+#           3) Manual input (fallback)
+if "prolific_pid" not in st.session_state:
+    if _prolific_pid:
+        st.session_state.prolific_pid = _prolific_pid
+    elif _pid_in:
+        st.session_state.prolific_pid = _pid_in
+
+# Manual Prolific ID input (ALWAYS show as backup, but optional if coming from Qualtrics)
+if not st.session_state.get("prolific_pid"):
+    # Coming from Qualtrics but no pid parameter - show manual input
+    if st.session_state.get("return_raw"):
+        st.warning("⚠️ No participant ID detected. Please enter manually:")
+    else:
+        st.markdown("### 📋 Study Participation")
+        st.markdown("""
+        Welcome! To participate in this study, please enter your **Prolific ID**.
+        
+        You can find this in:
+        - Your Prolific dashboard (top-right corner)
+        - The study instructions page
+        - The Qualtrics survey you came from
+        """)
+    
+    prolific_input = st.text_input(
+        "Prolific ID:",
+        placeholder="e.g., 5f8e3c2a1b9d4e6f7a8b9c0d",
+        help="This identifier connects your app interactions to your survey responses",
+        key="prolific_id_input"
+    )
+    
+    if st.button("Continue to Study", type="primary"):
+        if prolific_input.strip():
+            st.session_state.prolific_pid = prolific_input.strip()
+            st.success("✅ ID captured! Loading study...")
+            st.rerun()
+        else:
+            st.error("⚠️ Please enter your Prolific ID to continue.")
+    
+    st.stop()  # Block execution until ID provided
 
 # boolean flag for UI (sticky footer etc.)
 st.session_state.has_return_url = bool(st.session_state.get("return_raw", ""))  # always recompute
@@ -1143,6 +1184,9 @@ if current_state == 'complete' and len(st.session_state.chat_history) > 5:
                 
                 # Record with session tracker (COMPLETE TREATMENT DOCUMENTATION)
                 track_session_end(
+                    # Data linkage identifier
+                    participant_id=st.session_state.get('prolific_pid'),
+                    
                     # Outcomes (optional - usually in Qualtrics)
                     outcomes=outcomes,
                     feedback=None,
@@ -1212,18 +1256,32 @@ if current_state == 'complete' and len(st.session_state.chat_history) > 5:
                 with open(filename, "w") as f:
                     f.write(json.dumps(feedback_data, indent=2))
     
-    # Show "Continue to survey" button OUTSIDE the form (alternate after feedback)
-    # Only show after 2 minutes to ensure user engagement
+    # ============================================================================
+    # RETURN TO QUALTRICS (If coming from survey)
+    # ============================================================================
     if st.session_state.get("feedback_submitted", False) and st.session_state.get("return_raw"):
+        # Participant came from Qualtrics - return them to continue survey
+        st.markdown("---")
+        st.markdown("### ✅ Interaction Complete!")
+        st.markdown("""
+        Thank you for completing the interaction phase! 
+        
+        Please click the button below to **continue the survey**.
+        """)
+        
         elapsed_time = time.time() - st.session_state.get("start_time", time.time())
-        if elapsed_time >= 120:  # 2 minutes = 120 seconds
-            st.markdown("---")
-            if st.button("✅ Continue to survey", type="primary", use_container_width=True, key="feedback_return"):
-                back_to_survey()
+        if elapsed_time >= 120:  # 2 minutes minimum engagement
+            if st.button("📋 Continue to Survey", type="primary", use_container_width=True, key="return_to_qualtrics"):
+                back_to_survey(done_flag=True)
         else:
             remaining = int(120 - elapsed_time)
-            st.markdown("---")
-            st.info(f"⏱️ Please interact with the application. Continue button will appear in {remaining} seconds.")
+            st.info(f"⏱️ Please wait {remaining} seconds before continuing to the survey.")
+    
+    elif st.session_state.get("feedback_submitted", False):
+        # No return URL - standalone completion (shouldn't happen in study)
+        st.markdown("---")
+        st.success("✅ Thank you for your participation!")
+        st.markdown("You may close this window.")
 
 # Footer with dataset information
 st.markdown("---")
