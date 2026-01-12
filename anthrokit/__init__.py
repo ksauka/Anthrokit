@@ -114,7 +114,23 @@ __all__ = [
     "load_config",
     "load_preset",
     "get_preset",
-    # Prompts
+    # Scaffolds (domain-agnostic base content)
+    "greet",
+    "ask_info",
+    "inform",
+    "acknowledge",
+    "decide",
+    "explain_counterfactual",
+    "explain_factors",
+    "explain_impact",
+    "error_message",
+    "close_conversation",
+    "disclosure_statement",
+    "get_scaffold",
+    # Stylization (tone application)
+    "stylize_text",
+    "stylize_with_preset",
+    # Prompts (domain-specific pattern generation)
     "generate_greeting",
     "generate_decision_approve",
     "generate_decision_decline",
@@ -124,6 +140,7 @@ __all__ = [
     "validate_emoji_policy",
     "validate_guardrails",
     "limit_emojis",
+    "post_process_response",
     # Adaptive
     "ThresholdExplorer",
     "ThresholdOptimizer",
@@ -132,7 +149,8 @@ __all__ = [
     "collect_personality_traits",
     "collect_personality_once",
     "display_personality_profile",
-    "predict_preferred_anthropomorphism",
+    "map_traits_to_token_adjustments",
+    "apply_personality_to_preset",
     "BIG_5_ITEMS",
     # Tracking
     "track_session_start",

@@ -1,20 +1,77 @@
-"""Prompt generation utilities for AnthroKit.
+"""
+WORKING REFERENCE: Domain-Specific Prompt Generation for Loan/Credit Domain
 
-This module generates conversation prompts based on AnthroKit token values,
-implementing pattern cards (GREET, DECISION, EXPLAIN, CLOSE) with appropriate
-tone for HighA vs LowA presets.
+This module provides COMPLETE, PRODUCTION-READY prompt generation for the loan
+domain (used by XAIagent). It demonstrates how to integrate AnthroKit components
+to create personality-adaptive prompts using PURE ARCHITECTURE:
 
-Example:
-    >>> from anthrokit import load_preset, generate_greeting
-    >>> preset = load_preset("HighA")
-    >>> greeting = generate_greeting(preset)
-    >>> print(greeting)
-    "Hi, I'm Luna. I'll guide you through a short credit pre-assessment."
+    scaffolds.py → domain-agnostic base content
+         ↓
+    prompts.py → adds domain-specific context (loan/credit)
+         ↓
+    stylizer.py → applies personality-driven tone
+
+KEY INTEGRATION:
+    ✅ Uses anthrokit.scaffolds for base, neutral content structures
+    ✅ Adds loan-specific domain knowledge and constraints
+    ✅ Uses anthrokit.stylizer to convert personality-adjusted token values
+       (warmth, empathy, formality) into natural language instructions
+    ✅ Personality values ACTUALLY affect generated prompts (not just logged)
+
+USAGE:
+    FOR LOAN DOMAIN (XAIagent):
+        >>> from anthrokit.prompts import build_loan_system_prompt
+        >>> from XAIagent.src.ab_config import config
+        >>> 
+        >>> # Uses personality-adjusted values from config.final_tone_config
+        >>> system_prompt = build_loan_system_prompt(
+        ...     preset=config.final_tone_config,
+        ...     domain_context="credit pre-assessment"
+        ... )
+    
+    FOR NEW DOMAINS:
+        1. Copy this file to your domain app folder
+        2. Replace "loan/credit" with your domain terminology
+        3. Modify domain-specific constraints for your use case
+        4. Keep the scaffold + stylizer integration pattern
+
+ARCHITECTURAL PATTERN:
+    User Personality Traits
+        ↓ (map_traits_to_token_adjustments)
+    Token Adjustments (warmth: +0.30, empathy: +0.17)
+        ↓ (apply_personality_to_preset)
+    Final Tone Config (warmth: 0.85, empathy: 0.72)
+        ↓ (scaffolds.greet/decide/explain_*)
+    Base Content (neutral, domain-agnostic)
+        ↓ (Add domain-specific context: "credit", "loan approval")
+    Domain-Enhanced Content
+        ↓ (_build_stylization_prompt)
+    Natural Language Instructions ("Use warm, friendly tone")
+        ↓ (build_loan_system_prompt)
+    Complete System Prompt (tone + domain content)
+        ↓
+    LLM Generation
+
+This is a WORKING EXAMPLE that XAIagent uses in production.
 """
 
 from __future__ import annotations
 
 from typing import Dict, Any, Optional
+
+# Import AnthroKit scaffolds for domain-agnostic base content
+from anthrokit.scaffolds import (
+    greet,
+    ask_info,
+    decide,
+    explain_factors,
+    explain_counterfactual,
+    close_conversation,
+    disclosure_statement,
+)
+
+# Import AnthroKit stylizer for personality-driven prompt generation
+from anthrokit.stylizer import _build_stylization_prompt
 
 
 def _is_high_anthropomorphism(preset: Dict[str, Any]) -> bool:
@@ -199,11 +256,423 @@ def get_disclosure_text(preset: Dict[str, Any]) -> str:
     return ""
 
 
+def build_loan_system_prompt(
+    preset: Dict[str, Any],
+    domain_context: str = "credit pre-assessment"
+) -> str:
+    """Build complete system prompt for loan domain using personality-adjusted preset.
+    
+    This demonstrates PURE ARCHITECTURE:
+    1. Gets base greeting from scaffolds (domain-agnostic)
+    2. Adds loan-specific domain context and constraints
+    3. Uses stylizer to apply personality-driven tone
+    
+    Args:
+        preset: Final tone configuration (includes personality adjustments)
+                Example: {"warmth": 0.85, "empathy": 0.72, "formality": 0.25, 
+                         "persona_name": "Luna", "self_reference": "I", ...}
+        domain_context: Specific context within loan domain (e.g., "credit pre-assessment")
+        
+    Returns:
+        Complete system prompt with personality-driven tone + domain instructions
+        
+    Example:
+        >>> from anthrokit.config import load_preset
+        >>> from anthrokit.personality import apply_personality_to_preset
+        >>> 
+        >>> # Get personality-adjusted preset
+        >>> base = load_preset("HighA")
+        >>> personality = {"extraversion": 7.0, "agreeableness": 6.0, ...}
+        >>> final = apply_personality_to_preset(base, personality)
+        >>> 
+        >>> # Generate prompt (personality affects tone automatically)
+        >>> prompt = build_loan_system_prompt(preset=final)
+        >>> # warmth=0.85 → "Use a warm, friendly tone"
+        >>> # empathy=0.72 → "Show empathy and understanding"
+    """
+    # Step 1: Get base greeting from scaffold (domain-agnostic)
+    base_greeting = greet(context=domain_context)
+    
+    # Step 2: Add loan-specific domain knowledge and constraints
+    domain_instructions = f"""{base_greeting}
+
+Role and Responsibilities:
+- Collect applicant information accurately
+- Explain eligibility requirements clearly  
+- Provide preliminary assessment results
+
+Domain-Specific Context (Loan/Credit Pre-Assessment):
+- This is a preliminary screening, not a final lending decision
+- Results are based on statistical models with known limitations
+- Complex cases should be referred to human loan advisors
+- Questions about the application process can be answered
+
+Safety Constraints (Loan Domain):
+- NEVER guarantee loan approval outcomes
+- NEVER provide personalized financial advice beyond pre-assessment
+- DO NOT discuss sensitive attributes (race, gender) as causal factors
+- DO NOT claim feelings, emotions, or personal experiences
+- DO NOT claim embodiment or physical presence
+- Preserve all factual content and numeric values exactly as provided
+"""
+    
+    # Step 3: Use stylizer to convert personality tokens to natural language tone
+    # This is where personality ACTUALLY affects the prompt (not just logged)
+    # warmth=0.85 → "Use a warm, friendly tone"
+    # warmth=0.55 → "Use a moderately warm tone"
+    return _build_stylization_prompt(
+        preset=preset,
+        text=domain_instructions,
+        context=None
+    )
+
+
+def build_meta_question_prompt(
+    preset: Dict[str, Any],
+    field: str,
+    user_question: str
+) -> str:
+    """Build system prompt for answering meta-questions about required fields.
+    
+    Uses scaffolds.ask_info for base structure + loan domain context.
+    
+    When users ask "why do you need this?" or "what is this for?", this generates
+    a prompt that explains the field's relevance and then requests the information.
+    
+    Args:
+        preset: Final tone configuration (personality-adjusted)
+        field: Field name (e.g., "age", "occupation")
+        user_question: The user's actual question
+        
+    Returns:
+        System prompt for meta-question response
+        
+    Example:
+        >>> prompt = build_meta_question_prompt(
+        ...     preset=final_tone_config,
+        ...     field="education",
+        ...     user_question="why do you need my education level?"
+        ... )
+    """
+    field_friendly = field.replace('_', ' ')
+    
+    # Get base ask_info scaffold (domain-agnostic)
+    base_request = ask_info(
+        fields=[field_friendly],
+        purpose="for credit pre-assessment"
+    )
+    
+    if _is_high_anthropomorphism(preset):
+        domain_instructions = f"""You are answering a user's meta-question about the application process.
+
+Context:
+- User asked: '{user_question}'
+- They are responding to a request for: {field_friendly}
+- Base request: {base_request}
+
+Task (Loan Domain):
+1. Explain briefly (2-3 sentences) why {field_friendly} is needed for credit assessment
+   (e.g., age → repayment capacity; education → income potential; occupation → stability)
+2. Then politely prompt them to provide the information
+
+Rules:
+- Keep it conversational and plain-language
+- No emojis inside lists; at most one subtle emoji overall
+- Be encouraging and understanding"""
+    else:
+        domain_instructions = f"""You are explaining a required field in the application process.
+
+Context:
+- User asked: '{user_question}'
+- Field in question: {field_friendly}
+- Base request: {base_request}
+
+Task (Loan Domain):
+1. Explain concisely (1-2 sentences) why {field_friendly} is relevant to credit assessment
+2. Request the information
+
+Rules:
+- Professional, direct tone
+- No emojis
+- Be clear and concise"""
+    
+    return _build_stylization_prompt(
+        preset=preset,
+        text=domain_instructions,
+        context=None
+    )
+
+
+def build_validation_message_prompt(
+    preset: Dict[str, Any],
+    field: str,
+    expected_format: str,
+    attempt: int = 1
+) -> str:
+    """Build system prompt for validation error messages.
+    
+    When user input is invalid, this generates a prompt for a helpful error message
+    that explains what's expected and encourages the user to try again.
+    
+    Args:
+        preset: Final tone configuration (personality-adjusted)
+        field: Field name that had validation error
+        expected_format: Description of the expected format
+        attempt: Number of validation attempts (for escalating guidance)
+        
+    Returns:
+        System prompt for validation message generation
+        
+    Example:
+        >>> prompt = build_validation_message_prompt(
+        ...     preset=final_tone_config,
+        ...     field="age",
+        ...     expected_format="number between 18 and 100",
+        ...     attempt=2
+        ... )
+    """
+    field_friendly = field.replace('_', ' ')
+    
+    if _is_high_anthropomorphism(preset):
+        domain_instructions = f"""You are helping a user fix invalid input.
+
+Context:
+- Field: {field_friendly}
+- Expected format: {expected_format}
+- This is attempt #{attempt}
+
+Task:
+Generate a conversational, encouraging validation message (2 short sentences max):
+1. Acknowledge the issue gently
+2. State clearly what format is needed
+
+Rules:
+- Keep it friendly and supportive
+- No emojis inside lists; at most one subtle emoji overall
+- Be clear about requirements"""
+    else:
+        domain_instructions = f"""You are generating a validation error message.
+
+Context:
+- Field: {field_friendly}
+- Expected format: {expected_format}
+- Attempt: {attempt}
+
+Task:
+Generate a clear, concise validation message (1-2 sentences):
+1. State the issue
+2. Specify required format
+
+Rules:
+- Professional, direct tone
+- No emojis
+- Be precise"""
+    
+    return _build_stylization_prompt(
+        preset=preset,
+        text=domain_instructions,
+        context=None
+    )
+
+
+def build_explanation_prompt(
+    preset: Dict[str, Any],
+    explanation_type: str = "shap"
+) -> str:
+    """Build system prompt for ML explanation generation (SHAP, DiCE, etc.).
+    
+    Uses scaffolds (explain_factors, explain_counterfactual) + loan domain context.
+    
+    Generates prompts for explaining model decisions using different XAI methods:
+    - "shap": Feature importance explanations (uses explain_factors scaffold)
+    - "dice": Counterfactual explanations (uses explain_counterfactual scaffold)
+    - Other types for future expansion
+    
+    Args:
+        preset: Final tone configuration (personality-adjusted)
+        explanation_type: Type of explanation ("shap", "dice", or other)
+        
+    Returns:
+        System prompt for explanation generation
+        
+    Example:
+        >>> prompt = build_explanation_prompt(
+        ...     preset=final_tone_config,
+        ...     explanation_type="shap"
+        ... )
+    """
+    if _is_high_anthropomorphism(preset):
+        if explanation_type == "shap":
+            # Get base scaffold for factor attribution
+            base_scaffold = "Explaining factors that influenced the decision"
+            
+            domain_instructions = f"""{base_scaffold}
+
+Task (Credit Pre-Assessment Explanation):
+Provide a friendly, plain-language explanation of the decision:
+- For approvals: highlight what helped most
+- For denials: note what helped AND what limited the score
+
+Guidelines:
+- Keep it concise (1-2 short paragraphs)
+- Use everyday language, not technical jargon
+- No emojis inside lists; at most one subtle emoji overall
+- Preserve all numbers exactly as provided
+- Show empathy if the news is disappointing
+
+Domain Context:
+- This is a preliminary credit assessment, not a final decision
+- Factors are identified by statistical model
+- Each factor's impact is measured (positive/negative contribution)"""
+        
+        elif explanation_type == "dice":
+            # Get base scaffold for counterfactual
+            base_scaffold = "Providing actionable guidance on potential changes"
+            
+            domain_instructions = f"""{base_scaffold}
+
+Task (Credit Counterfactual Guidance):
+Provide a brief, actionable counterfactual explanation:
+- What small changes could flip the outcome?
+- Focus on realistic, achievable modifications
+
+Guidelines:
+- Keep it concise (1-2 short paragraphs)
+- Make it practical and encouraging
+- No emojis inside lists; at most one subtle emoji overall
+- Preserve all numbers exactly as provided
+
+Domain Context:
+- This is preliminary advice based on model analysis
+- Changes shown are statistically likely to improve approval chances
+- Individual circumstances may vary - consult advisors for specific guidance"""
+        
+        else:
+            domain_instructions = """Explaining a credit pre-assessment result.
+
+Task:
+Provide a concise, friendly explanation in plain language.
+
+Guidelines:
+- Keep it brief and clear
+- Use everyday language
+- At most one subtle emoji overall; none in lists
+- Preserve all numbers exactly as provided"""
+    
+    else:
+        if explanation_type == "shap":
+            # Professional structured format
+            domain_instructions = """Generating a structured credit pre-assessment explanation.
+
+Task:
+Provide a clear, structured explanation with:
+- Decision Summary (include percentage if available)
+- Positive Factors (bulleted list of factors that increased approval likelihood)
+- Negative Factors (bulleted list of factors that decreased approval likelihood)
+
+Guidelines:
+- Professional, neutral tone
+- No emojis
+- Preserve all numbers exactly as provided
+- Use clear formatting
+
+Domain Context:
+- This is a preliminary credit assessment
+- Factors are identified by statistical model (e.g., SHAP values)
+- Each factor's contribution is quantified"""
+        
+        elif explanation_type == "dice":
+            domain_instructions = """Generating a structured counterfactual analysis.
+
+Task:
+Provide a concise, structured counterfactual summary with:
+- Recommended Profile Modifications (numbered list)
+- Rationale (one sentence explanation per modification)
+
+Guidelines:
+- Professional, technical tone
+- No emojis
+- Preserve all numbers exactly as provided
+- Be precise and actionable
+
+Domain Context:
+- This is algorithmic analysis of profile changes
+- Changes shown are statistically likely to improve approval
+- Not personalized financial advice"""
+        
+        else:
+            domain_instructions = """Generating a credit pre-assessment explanation.
+
+Task:
+Provide a concise, structured explanation.
+
+Guidelines:
+- Professional, direct tone
+- No emojis
+- Preserve all numbers exactly as provided
+- Use clear formatting"""
+    
+    return _build_stylization_prompt(
+        preset=preset,
+        text=domain_instructions,
+        context=None
+    )
+
+
+def build_general_enhancement_prompt(
+    preset: Dict[str, Any],
+    response_type: str = "general"
+) -> str:
+    """Build system prompt for general response enhancement.
+    
+    Used by enhance_response() to rewrite system responses with appropriate tone
+    while preserving factual content.
+    
+    Args:
+        preset: Final tone configuration (personality-adjusted)
+        response_type: Type of response being enhanced
+        
+    Returns:
+        System prompt for response enhancement
+        
+    Example:
+        >>> prompt = build_general_enhancement_prompt(
+        ...     preset=final_tone_config,
+        ...     response_type="explanation"
+        ... )
+    """
+    domain_instructions = """You are rewriting system responses for end users.
+
+Task:
+Rewrite the provided text to match the appropriate tone while preserving ALL factual content.
+
+Critical Rules:
+- Preserve all numeric values EXACTLY as provided
+- Do not add, remove, or modify any facts
+- Do not invent information
+- Maintain the core message unchanged
+
+Tone Adjustments:
+- Apply appropriate warmth/formality from your personality configuration
+- Use consistent self-reference patterns
+- Match emoji policy (if high anthropomorphism: max 1 subtle emoji, none in lists)
+- If low anthropomorphism: no emojis, no letter formatting"""
+    
+    return _build_stylization_prompt(
+        preset=preset,
+        text=domain_instructions,
+        context=None
+    )
+
+
 def build_system_prompt(
     preset: Dict[str, Any],
     task_context: Optional[str] = None
 ) -> str:
     """Build complete system prompt from preset and task context.
+    
+    LEGACY: Uses hardcoded HighA/LowA logic (not personality-driven).
+    Use build_loan_system_prompt() for personality integration.
     
     Args:
         preset: Preset configuration

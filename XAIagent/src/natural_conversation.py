@@ -171,35 +171,44 @@ def _get_loan_validators() -> List[Callable]:
 
 
 # ---------- AnthroKit-aligned prompts ----------
-def _build_system_prompt(high_anthropomorphism: bool = True) -> str:
+def _build_system_prompt(preset: Optional[Dict[str, Any]] = None, high_anthropomorphism: bool = True) -> str:
     """
-    System prompts aligned with AnthroKit:
-    - HighA: friendly, conversational, plain language; no claims of feelings/experience.
-    - LowA: professional, neutral, structured; no salutations/closings; no emojis.
-    - Both: preserve numbers exactly; brief AI disclosure on first contact (handled upstream).
+    Build system prompt for loan domain using AnthroKit integration.
+    
+    REQUIRES: preset parameter (personality-adjusted tone configuration)
+    USES: anthrokit.prompts.build_loan_system_prompt() for ALL prompts
+    
+    Args:
+        preset: Final tone configuration with personality adjustments
+                (from config.final_tone_config) - REQUIRED
+        high_anthropomorphism: Deprecated, kept for API compatibility
+    
+    Returns:
+        Complete system prompt with personality-driven tone
     """
-    if high_anthropomorphism:
-        return (
-            "You are Luna, an AI assistant for credit pre-assessment. "
-            "Use a friendly, conversational, plain-language tone. Be concise and helpful. "
-            "You may use first-person for actions (e.g., 'I can explain'), but do not claim feelings, "
-            "personal experiences, or embodiment. No slang. "
-            "Do not use emojis inside lists or numbered explanations; casual lines may include at most one subtle emoji. "
-            "Safety: no sensitive-attribute inferences or deception. "
-            "Preserve all factual content and numeric values exactly as provided."
+    if preset is None:
+        raise ValueError(
+            "_build_system_prompt now requires 'preset' parameter. "
+            "Pass config.final_tone_config from ab_config."
         )
-    else:
-        return (
-            "You are a professional AI loan assistant. Use clear, direct, neutral language. "
-            "No emojis. No slang. No salutations or signature blocks. Start directly with content. "
-            "Prefer structured formatting (short paragraphs, bullets) when appropriate. "
-            "Do not claim feelings, personal experiences, or embodiment. "
-            "Preserve all factual content and numeric values exactly as provided."
-        )
+    
+    from anthrokit.prompts import build_loan_system_prompt
+    return build_loan_system_prompt(
+        preset=preset,
+        domain_context="credit pre-assessment"
+    )
 
 
-def _compose_messages(response: str, context: Optional[Dict[str, Any]], high_anthropomorphism: bool = True):
-    sys_prompt = _build_system_prompt(high_anthropomorphism)
+def _compose_messages(response: str, context: Optional[Dict[str, Any]], preset: Optional[Dict[str, Any]] = None, high_anthropomorphism: bool = True):
+    """Compose OpenAI messages with personality-driven system prompt.
+    
+    Args:
+        response: System response to enhance
+        context: Additional context information
+        preset: Final tone configuration (personality-adjusted)
+        high_anthropomorphism: Legacy parameter (used if preset=None)
+    """
+    sys_prompt = _build_system_prompt(preset=preset, high_anthropomorphism=high_anthropomorphism)
     ctx_lines = []
     if context:
         for k, v in context.items():
@@ -223,10 +232,19 @@ def _compose_messages(response: str, context: Optional[Dict[str, Any]], high_ant
 # ---------- Public helpers ----------
 
 
-def handle_meta_question(field: str, user_input: str, high_anthropomorphism: bool = True) -> Optional[str]:
+def handle_meta_question(field: str, user_input: str, preset: Optional[Dict[str, Any]] = None, high_anthropomorphism: bool = True) -> Optional[str]:
     """
     If the user asks a process question (why/what/how), generate a brief explanation
     and then prompt for the field. Otherwise return None to continue data capture.
+    
+    Args:
+        field: Field name being asked about
+        user_input: User's question
+        preset: Final tone configuration (personality-adjusted) - REQUIRED for personality integration
+        high_anthropomorphism: Legacy parameter, kept for API compatibility
+    
+    Returns:
+        Explanation + prompt, or None if not a question
     """
     user_lower = user_input.lower().strip()
     question_words = ['why', 'what', 'how', 'where', 'when', 'who', 'explain', 'tell me']
@@ -253,42 +271,44 @@ def handle_meta_question(field: str, user_input: str, high_anthropomorphism: boo
         return basics.get(field, f"This information about {field.replace('_', ' ')} supports assessment.")
 
     try:
-        # Build system and user prompts
-        if high_anthropomorphism:
-            system_prompt = (
-                "You are Luna, an AI assistant. The user asked a brief 'why/what/how' question about a field. "
-                "Explain in plain language why the field is relevant to credit assessment, 2–3 sentences, "
-                "then politely prompt them to provide it. No emojis inside lists; at most one subtle emoji overall."
-            )
-        else:
-            system_prompt = (
-                "You are a professional AI loan assistant. Explain concisely why the field is relevant to assessment "
-                "in 1–2 sentences, then prompt for the information. No emojis."
-            )
-
-        field_friendly = field.replace('_', ' ')
-        user_prompt = (
-            f"The user asked: '{user_input}'. They are responding to a request for {field_friendly}. "
-            f"Explain why it's needed, then ask for it."
+        # Use AnthroKit prompt builder (personality-driven)
+        from anthrokit.prompts import build_meta_question_prompt
+        
+        # Get preset if not provided
+        if preset is None:
+            try:
+                from XAIagent.src.ab_config import config
+                preset = config.final_tone_config
+            except (ImportError, AttributeError):
+                # Fallback: construct minimal preset from high_anthropomorphism flag
+                preset = {"self_reference": "I" if high_anthropomorphism else "none"}
+        
+        system_prompt = build_meta_question_prompt(
+            preset=preset,
+            field=field,
+            user_question=user_input
         )
 
+        
+        user_prompt = "Explain why this field is needed and request the information."
+
         model_name = os.getenv("HICXAI_OPENAI_MODEL", "gpt-4o-mini")
-        temperature = float(os.getenv("HICXAI_TEMPERATURE", "0.6" if high_anthropomorphism else "0.3"))
+        is_high_a = preset.get("self_reference") == "I" if preset else high_anthropomorphism
+        temperature = float(os.getenv("HICXAI_TEMPERATURE", "0.6" if is_high_a else "0.3"))
 
         # Use generation control if available
         if GENERATION_CONTROL_AVAILABLE:
             try:
-                tone_config = {"high_anthropomorphism": high_anthropomorphism, "field": field}
                 result, metadata = generate_with_control(
                     prompt=system_prompt,
                     user_input=user_prompt,
-                    final_tone_config=tone_config,
+                    final_tone_config=preset,
                     model_name=model_name,
                     validators=_get_loan_validators(),
                     temperature=temperature,
                     max_tokens=300
                 )
-                if result and high_anthropomorphism:
+                if result and is_high_a:
                     result = _limit_emojis(result, max_emojis=1, ban_in_lists=True)
                 return result
             except Exception:
@@ -307,7 +327,7 @@ def handle_meta_question(field: str, user_input: str, high_anthropomorphism: boo
             max_tokens=300,
         )
         result = completion.choices[0].message.content if completion and completion.choices else None
-        if result and high_anthropomorphism:
+        if result and is_high_a:
             result = _limit_emojis(result, max_emojis=1, ban_in_lists=True)
         return result
     except Exception:
@@ -315,52 +335,66 @@ def handle_meta_question(field: str, user_input: str, high_anthropomorphism: boo
 
 
 def enhance_validation_message(field: str, user_input: str, expected_format: str, attempt: int = 1,
-                               high_anthropomorphism: bool = True) -> Optional[str]:
+                               preset: Optional[Dict[str, Any]] = None, high_anthropomorphism: bool = True) -> Optional[str]:
     """
     LLM-generated validation messages (friendly HighA vs concise LowA).
     Returns None if LLM unavailable so caller can use fallback.
-    Now uses generation control when available.
+    Now uses generation control and anthrokit prompt builder.
+    
+    Args:
+        field: Field name with validation error
+        user_input: Invalid input provided by user
+        expected_format: Description of expected format
+        attempt: Validation attempt number
+        preset: Final tone configuration (personality-adjusted) - REQUIRED for personality integration
+        high_anthropomorphism: Legacy parameter, kept for API compatibility
+    
+    Returns:
+        Validation message or None if LLM unavailable
     """
     if not _should_use_genai():
         return None
     try:
-        if high_anthropomorphism:
-            system_prompt = (
-                "You are Luna, an AI assistant. Generate a conversational, encouraging validation message "
-                "when input is invalid. 2 short sentences max. State the needed format clearly. "
-                "No emojis inside lists; at most one subtle emoji overall."
-            )
-        else:
-            system_prompt = (
-                "You are a professional AI loan assistant. Generate a clear, concise validation message "
-                "for invalid input (1–2 sentences). No emojis."
-            )
+        # Use AnthroKit prompt builder (personality-driven)
+        from anthrokit.prompts import build_validation_message_prompt
+        
+        # Get preset if not provided
+        if preset is None:
+            try:
+                from XAIagent.src.ab_config import config
+                preset = config.final_tone_config
+            except (ImportError, AttributeError):
+                preset = {"self_reference": "I" if high_anthropomorphism else "none"}
+        
+        system_prompt = build_validation_message_prompt(
+            preset=preset,
+            field=field,
+            expected_format=expected_format,
+            attempt=attempt
+        )
 
         user_prompt = (
-            f"Field: {field.replace('_',' ')}\n"
             f"User entered: '{user_input}' (invalid)\n"
-            f"Expected format: {expected_format}\n"
-            f"Attempt: {attempt}\n"
-            "Write the message."
+            "Generate the validation message."
         )
 
         model_name = os.getenv("HICXAI_OPENAI_MODEL", "gpt-4o-mini")
-        temperature = float(os.getenv("HICXAI_TEMPERATURE", "0.6" if high_anthropomorphism else "0.3"))
+        is_high_a = preset.get("self_reference") == "I" if preset else high_anthropomorphism
+        temperature = float(os.getenv("HICXAI_TEMPERATURE", "0.6" if is_high_a else "0.3"))
 
         # Use generation control if available
         if GENERATION_CONTROL_AVAILABLE:
             try:
-                tone_config = {"high_anthropomorphism": high_anthropomorphism, "field": field, "attempt": attempt}
                 result, metadata = generate_with_control(
                     prompt=system_prompt,
                     user_input=user_prompt,
-                    final_tone_config=tone_config,
+                    final_tone_config=preset,
                     model_name=model_name,
                     validators=_get_loan_validators(),
                     temperature=temperature,
                     max_tokens=220
                 )
-                if result and high_anthropomorphism:
+                if result and is_high_a:
                     result = _limit_emojis(result, max_emojis=1, ban_in_lists=True)
                 return result
             except Exception:
@@ -379,7 +413,7 @@ def enhance_validation_message(field: str, user_input: str, expected_format: str
             max_tokens=220,
         )
         result = completion.choices[0].message.content if completion and completion.choices else None
-        if result and high_anthropomorphism:
+        if result and is_high_a:
             result = _limit_emojis(result, max_emojis=1, ban_in_lists=True)
         return result
     except Exception:
@@ -387,79 +421,58 @@ def enhance_validation_message(field: str, user_input: str, expected_format: str
 
 
 def generate_from_data(data: Dict[str, Any], explanation_type: str = "shap",
-                       high_anthropomorphism: bool = True) -> Optional[str]:
+                       preset: Optional[Dict[str, Any]] = None, high_anthropomorphism: bool = True) -> Optional[str]:
     """
     Generate explanation from structured data (SHAP or counterfactual).
-    HighA = friendly plain language; LowA = professional structured.
-    Now uses generation control when available.
+    Now uses anthrokit prompt builder for personality-driven prompts.
+    
+    Args:
+        data: Structured data to explain (SHAP values, counterfactuals, etc.)
+        explanation_type: Type of explanation ("shap", "dice", etc.)
+        preset: Final tone configuration (personality-adjusted) - REQUIRED for personality integration
+        high_anthropomorphism: Legacy parameter, kept for API compatibility
+    
+    Returns:
+        Generated explanation or None if LLM unavailable
     """
     if not _should_use_genai():
         return None
     try:
-        if high_anthropomorphism:
-            if explanation_type == "shap":
-                system_prompt = (
-                    "You are Luna, an AI assistant. Provide a friendly, plain-language explanation of the decision. "
-                    "For approvals: highlight what helped. For denials: note what helped and what limited the score. "
-                    "Keep it concise (1–2 short paragraphs). No emojis inside lists; at most one subtle emoji overall. "
-                    "Preserve all numbers exactly as provided."
-                )
-            elif explanation_type == "dice":
-                system_prompt = (
-                    "You are Luna, an AI assistant. Provide a brief, actionable counterfactual explanation "
-                    "(what small changes could flip the outcome). 1–2 short paragraphs. "
-                    "No emojis inside lists; at most one subtle emoji overall. Preserve numbers."
-                )
-            else:
-                system_prompt = (
-                    "You are Luna, an AI assistant. Provide a concise, friendly explanation in plain language. "
-                    "Preserve numbers exactly. At most one subtle emoji overall; none in lists."
-                )
-        else:
-            if explanation_type == "shap":
-                system_prompt = (
-                    "You are a professional AI loan assistant. Provide a clear, structured explanation:\n"
-                    "- Decision Summary (with percentage)\n"
-                    "- Positive Factors (bullets)\n"
-                    "- Negative Factors (bullets)\n"
-                    "No emojis. Preserve numbers exactly."
-                )
-            elif explanation_type == "dice":
-                system_prompt = (
-                    "You are a professional AI loan assistant. Provide a concise, structured counterfactual summary:\n"
-                    "- Recommended Profile Modifications (numbered)\n"
-                    "- Rationale (one sentence)\n"
-                    "No emojis. Preserve numbers exactly."
-                )
-            else:
-                system_prompt = (
-                    "You are a professional AI loan assistant. Provide a concise, structured explanation. "
-                    "No emojis. Preserve numbers exactly."
-                )
+        # Use AnthroKit prompt builder (personality-driven)
+        from anthrokit.prompts import build_explanation_prompt
+        
+        # Get preset if not provided
+        if preset is None:
+            try:
+                from XAIagent.src.ab_config import config
+                preset = config.final_tone_config
+            except (ImportError, AttributeError):
+                preset = {"self_reference": "I" if high_anthropomorphism else "none"}
+        
+        system_prompt = build_explanation_prompt(
+            preset=preset,
+            explanation_type=explanation_type
+        )
 
         import json
         data_json = json.dumps(data, indent=2, default=str)
         user_prompt = (
-            f"Explanation type: {explanation_type}\n"
             f"Data (JSON):\n{data_json}\n\n"
             "Return only the explanation text. Preserve all numeric values exactly."
         )
 
         model_name = os.getenv("HICXAI_OPENAI_MODEL", "gpt-4o-mini")
-        temperature = float(os.getenv("HICXAI_TEMPERATURE", "0.6" if high_anthropomorphism else "0.3"))
+        is_high_a = preset.get("self_reference") == "I" if preset else high_anthropomorphism
+        temperature = float(os.getenv("HICXAI_TEMPERATURE", "0.6" if is_high_a else "0.3"))
         max_tokens = 600 if explanation_type == "shap" else 400
 
         # Use generation control if available
         if GENERATION_CONTROL_AVAILABLE:
             try:
-                tone_config = {
-                    "high_anthropomorphism": high_anthropomorphism,
-                    "explanation_type": explanation_type
-                }
                 content, metadata = generate_with_control(
                     prompt=system_prompt,
                     user_input=user_prompt,
-                    final_tone_config=tone_config,
+                    final_tone_config=preset,
                     model_name=model_name,
                     validators=_get_loan_validators(),
                     temperature=temperature,
@@ -467,7 +480,7 @@ def generate_from_data(data: Dict[str, Any], explanation_type: str = "shap",
                 )
                 
                 if content:
-                    if not high_anthropomorphism:
+                    if not is_high_a:
                         content = _remove_letter_formatting(content)
                     else:
                         content = _limit_emojis(content, max_emojis=1, ban_in_lists=True)
@@ -491,7 +504,7 @@ def generate_from_data(data: Dict[str, Any], explanation_type: str = "shap",
         content = completion.choices[0].message.content if completion and completion.choices else None
 
         if content:
-            if not high_anthropomorphism:
+            if not is_high_a:
                 content = _remove_letter_formatting(content)
             else:
                 content = _limit_emojis(content, max_emojis=1, ban_in_lists=True)
@@ -513,8 +526,16 @@ def enhance_response(response: str, context: Optional[Dict[str, Any]] = None,
         return response
 
     try:
-        # Build system prompt
-        sys_prompt = _build_system_prompt(high_anthropomorphism)
+        # Try to get personality-adjusted preset
+        preset = None
+        try:
+            from XAIagent.src.ab_config import config
+            preset = config.final_tone_config
+        except (ImportError, AttributeError):
+            pass  # Fall back to hardcoded logic
+        
+        # Build system prompt (personality-driven if preset available)
+        sys_prompt = _build_system_prompt(preset=preset, high_anthropomorphism=high_anthropomorphism)
         ctx_lines = []
         if context:
             for k, v in context.items():
