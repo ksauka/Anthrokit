@@ -152,6 +152,7 @@ section.main > div {padding-bottom: 0 !important;}
 
 # ===== QUALTRICS/PROLIFIC INTEGRATION (robust final) =====
 import time
+from typing import Dict
 from urllib.parse import unquote, urlparse, parse_qsl, urlencode, urlunparse
 
 def _get_query_params():
@@ -283,6 +284,16 @@ def back_to_survey(done_flag=True):
     """Single exit path. Call on button click or timeout."""
     if st.session_state._returned:
         return
+    
+    # Save logger session to GitHub before redirecting
+    if 'interaction_logger' in st.session_state:
+        try:
+            logger = st.session_state.interaction_logger
+            logger.end_session(completion_status="completed" if done_flag else "abandoned")
+            print(f"[App] Session logged to GitHub: {logger.session_id}")
+        except Exception as e:
+            print(f"[App] Failed to save logger session: {e}")
+    
     final = _build_final_return(done=done_flag)
     if not final:
         st.warning("Return link missing or invalid. Please use your browser Back button.")
@@ -329,13 +340,56 @@ from github_saver import save_to_github
 from loan_assistant import LoanAssistant
 from ab_config import config
 from shap_visualizer import display_shap_explanation, explain_shap_visualizations
-from data_logger import init_logger
+from interaction_logger import create_logger_from_secrets
 from xai_methods import get_friendly_feature_name
 import os
 import pandas as pd
 
-# Initialize data logger
-logger = init_logger()
+# Determine condition name based on environment variables
+# Map to user-friendly condition names for logging
+anthro = os.getenv("ANTHROKIT_ANTHRO", "high")  # high or low
+personality = os.getenv("PERSONALITY_ADAPTATION", "disabled")  # enabled or disabled
+
+CONDITION_NAME_MAP = {
+    ("low", "enabled"): "lowanthropersonality",
+    ("low", "disabled"): "lowanthrofixedperso",
+    ("high", "enabled"): "highanthropersonalized",
+    ("high", "disabled"): "highanthrofixedperso"
+}
+
+condition_name = CONDITION_NAME_MAP.get((anthro, personality), "unknown_condition")
+
+# Initialize GitHub logger with Streamlit secrets
+if 'interaction_logger' not in st.session_state:
+    # Mock config for logger initialization
+    class LoggerConfig:
+        show_anthropomorphic = (anthro == "high")
+        personality_adaptation_enabled = (personality == "enabled")
+        user_personality = None  # Will be set after personality survey
+    
+    logger_config = LoggerConfig()
+    st.session_state.interaction_logger = create_logger_from_secrets(st.secrets, logger_config)
+    st.session_state.interaction_logger.condition_name = condition_name
+    
+    # Add compatibility method for old logger API
+    def log_interaction_compat(interaction_type: str, content: Dict):
+        """Compatibility wrapper for old data_logger API"""
+        logger_inst = st.session_state.interaction_logger
+        
+        # If this is the first interaction, start a turn
+        if not logger_inst.current_turn:
+            turn_type = "greet" if "greeting" in interaction_type.lower() else "collect"
+            logger_inst.start_turn(turn_type=turn_type)
+        
+        # Store interaction data (will be logged at end of turn)
+        if not hasattr(logger_inst, '_temp_data'):
+            logger_inst._temp_data = {}
+        logger_inst._temp_data[interaction_type] = content
+    
+    st.session_state.interaction_logger.log_interaction = log_interaction_compat
+    print(f"[App] Initialized logger for condition: {condition_name}")
+
+logger = st.session_state.interaction_logger
 
 # Define field options for quick selection (based on actual Adult dataset analysis)
 field_options = {

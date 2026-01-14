@@ -228,8 +228,11 @@ class InteractionLogger:
         suffix = "_backup" if backup else ""
         filename = f"{self.session_id}{suffix}.json"
         
-        # File path in GitHub repo
-        file_path = f"interaction_logs/{filename}"
+        # Get condition name from session data or use 'unknown'
+        condition_name = self.session_data.get("condition_preset", "unknown_condition")
+        
+        # File path in GitHub repo - organized by condition
+        file_path = f"interaction_logs/{condition_name}/{filename}"
         
         # Prepare file content
         file_content = json.dumps(self.session_data, indent=2)
@@ -248,7 +251,7 @@ class InteractionLogger:
         get_response = requests.get(api_url, headers=headers)
         
         commit_data = {
-            "message": f"{'Backup' if backup else 'Final'} log for session {self.session_id}",
+            "message": f"{'Backup' if backup else 'Final'} log for session {self.session_id} ({condition_name})",
             "content": file_content_encoded,
             "branch": "main"
         }
