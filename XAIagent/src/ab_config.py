@@ -94,14 +94,31 @@ class AppConfig:
             
             # Check for personality-based personalization
             personality = get_personality_from_session()
+            print(f"\n🧬 DEBUG: Personality Detection")
             if personality:
+                print(f"   ✅ Personality found in session:")
+                print(f"      Extraversion: {personality.get('extraversion', 0):.2f}")
+                print(f"      Agreeableness: {personality.get('agreeableness', 0):.2f}")
+                print(f"      Conscientiousness: {personality.get('conscientiousness', 0):.2f}")
+                print(f"      Neuroticism: {personality.get('neuroticism', 0):.2f}")
+                print(f"      Openness: {personality.get('openness', 0):.2f}")
+                
                 # Calculate adjustments
                 self.personality_adjustments = map_traits_to_token_adjustments(personality)
+                print(f"\n🎚️ DEBUG: Personality Adjustments Calculated:")
+                print(f"      Warmth: {self.personality_adjustments.get('warmth', 0):+.3f}")
+                print(f"      Empathy: {self.personality_adjustments.get('empathy', 0):+.3f}")
+                print(f"      Formality: {self.personality_adjustments.get('formality', 0):+.3f}")
+                print(f"      Hedging: {self.personality_adjustments.get('hedging', 0):+.3f}")
                 
                 # Apply adjustments
                 preset = apply_personality_to_preset(base_preset, personality)
-                print(f"🧠 Applied personality-based adjustments to {self.anthro_preset} preset")
+                print(f"\n🔧 DEBUG: Applied personality adjustments to {self.anthro_preset} preset")
+                print(f"   Base warmth: {base_preset.get('warmth', 0):.3f}")
+                print(f"   Final warmth: {preset.get('warmth', 0):.3f}")
             else:
+                print(f"   ⚠️ No personality data found in session")
+                print(f"   Using base {self.anthro_preset} preset without adjustments")
                 # No personality adjustments
                 self.personality_adjustments = {
                     "warmth": 0.0,
@@ -222,6 +239,53 @@ class AppConfig:
         # Policy defaults
         self.no_deception = True
         self.no_human_experience_claims = True
+        self.no_sensitive_inference = True
+        self.no_emojis_in_numbered_explanations = True
+    
+    def refresh_personality_adjustments(self):
+        """Refresh personality adjustments after questionnaire completion.
+        Call this after save_personality_to_session() to update final_tone_config."""
+        try:
+            from anthrokit import load_preset
+            from anthrokit.personality import (
+                get_personality_from_session,
+                apply_personality_to_preset,
+                map_traits_to_token_adjustments
+            )
+            
+            print(f"\n🔄 DEBUG: Refreshing personality adjustments...")
+            
+            # Reload base preset
+            base_preset = load_preset(self.anthro_preset)
+            
+            # Check for personality data
+            personality = get_personality_from_session()
+            if personality:
+                print(f"   ✅ Found personality in session")
+                print(f"      Extraversion: {personality.get('extraversion', 0):.2f}")
+                print(f"      Agreeableness: {personality.get('agreeableness', 0):.2f}")
+                
+                # Calculate and apply adjustments
+                self.personality_adjustments = map_traits_to_token_adjustments(personality)
+                preset = apply_personality_to_preset(base_preset, personality)
+                
+                print(f"\n   🎚️ Adjustments applied:")
+                print(f"      Warmth: {base_preset.get('warmth', 0):.3f} → {preset.get('warmth', 0):.3f}")
+                print(f"      Empathy: {base_preset.get('empathy', 0):.3f} → {preset.get('empathy', 0):.3f}")
+                print(f"      Formality: {base_preset.get('formality', 0):.3f} → {preset.get('formality', 0):.3f}")
+                print(f"      Hedging: {base_preset.get('hedging', 0):.3f} → {preset.get('hedging', 0):.3f}")
+                
+                # Update final_tone_config and instance variables
+                self.final_tone_config = preset.copy()
+                self.warmth = preset.get("warmth", self.warmth)
+                self.empathy = preset.get("empathy", self.empathy)
+                self.formality = preset.get("formality", self.formality)
+                print(f"   ✅ final_tone_config updated!")
+            else:
+                print(f"   ⚠️ No personality found - keeping base preset")
+                
+        except Exception as e:
+            print(f"   ❌ ERROR refreshing personality: {e}")
         self.no_sensitive_inference = True
         self.no_emojis_in_numbered_explanations = True
 

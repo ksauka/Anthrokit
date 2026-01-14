@@ -89,6 +89,9 @@ def _build_stylization_prompt(
     Returns:
         System prompt string
     """
+    print(f"\n🎨 DEBUG: _build_stylization_prompt CALLED!")
+    print(f"   Preset keys: {list(preset.keys())}")
+    
     warmth = preset.get("warmth", 0.5)
     formality = preset.get("formality", 0.5)
     empathy = preset.get("empathy", 0.5)
@@ -97,21 +100,65 @@ def _build_stylization_prompt(
     emoji = preset.get("emoji", "none")
     persona = preset.get("persona_name", "")
     
+    print(f"   Extracted values: warmth={warmth:.3f}, empathy={empathy:.3f}, formality={formality:.3f}")
+    
     # Build tone instructions
     tone_instructions = []
     
-    if warmth > 0.6:
-        tone_instructions.append("Use a warm, friendly tone")
-    elif warmth < 0.4:
-        tone_instructions.append("Use a neutral, professional tone")
+    # PERSONALITY-SENSITIVE THRESHOLDS with EXPLICIT examples
+    # LowA base=0.25: With high extraversion (+0.30) → 0.55 → "warm"
+    # LowA base=0.25: With low extraversion (-0.30) → 0.00 → "very neutral"
+    # HighA base=0.70: With high extraversion (+0.30) → 1.00 → "very warm"
     
-    if formality > 0.6:
-        tone_instructions.append("Maintain formal language")
-    elif formality < 0.4:
-        tone_instructions.append("Use conversational, accessible language")
+    # DEBUG: Test each warmth threshold
+    print(f"   🔍 Warmth threshold tests:")
+    print(f"      warmth > 0.80? {warmth > 0.80} (warmth={warmth})")
+    print(f"      warmth > 0.50? {warmth > 0.50} (warmth={warmth})")
+    print(f"      warmth > 0.35? {warmth > 0.35} (warmth={warmth})")
+    print(f"      warmth < 0.15? {warmth < 0.15} (warmth={warmth})")
     
-    if empathy > 0.6:
-        tone_instructions.append("Show empathy and understanding")
+    if warmth > 0.80:
+        instr = "Use a VERY warm, enthusiastic, friendly tone with engaging language"
+        print(f"      ✅ Adding: {instr}")
+        tone_instructions.append(instr)
+    elif warmth > 0.50:
+        instr = "Use a warm, friendly, encouraging tone - be welcoming and positive"
+        print(f"      ✅ Adding: {instr}")
+        tone_instructions.append(instr)
+    elif warmth > 0.50:
+        instr = "Use a warm, friendly, encouraging tone - be welcoming and positive"
+        print(f"      ✅ Adding: {instr}")
+        tone_instructions.append(instr)
+    elif warmth > 0.35:
+        instr = "Use a moderately warm, approachable tone"
+        print(f"      ✅ Adding: {instr}")
+        tone_instructions.append(instr)
+    elif warmth < 0.15:
+        instr = "Use a strictly neutral, detached, impersonal tone - minimize warmth completely"
+        print(f"      ✅ Adding: {instr}")
+        tone_instructions.append(instr)
+    else:
+        instr = "Use a neutral, professional tone without extra warmth"
+        print(f"      ✅ Adding: {instr}")
+        tone_instructions.append(instr)
+    
+    if formality > 0.80:
+        tone_instructions.append("Maintain VERY formal, academic language - be extremely precise and structured")
+    elif formality > 0.60:
+        tone_instructions.append("Maintain formal, professional language")
+    elif formality < 0.40:
+        tone_instructions.append("Use conversational, accessible language - write like you're talking to someone")
+    elif formality < 0.20:
+        tone_instructions.append("Use casual, everyday language - be relaxed and informal")
+    
+    if empathy > 0.70:
+        tone_instructions.append("Show strong empathy and understanding - acknowledge feelings and validate concerns warmly")
+    elif empathy > 0.45:
+        tone_instructions.append("Show empathy and understanding - be supportive")
+    elif empathy < 0.25:
+        tone_instructions.append("Remain strictly objective and task-focused - no emotional language or validation")
+    elif empathy < 0.10:
+        tone_instructions.append("Be completely impersonal - pure information delivery only")
     
     if self_ref == "I":
         tone_instructions.append(f"Use first-person (I/my) when appropriate")
@@ -120,8 +167,12 @@ def _build_stylization_prompt(
     else:
         tone_instructions.append("Use neutral third-person or passive voice")
     
-    if hedging > 0.5:
+    if hedging > 0.65:
+        tone_instructions.append("Use frequent hedging language (might, could, possibly, perhaps)")
+    elif hedging > 0.45:
         tone_instructions.append("Use hedging language (might, could, possibly)")
+    elif hedging < 0.30:
+        tone_instructions.append("Use confident, direct language without hedging")
     
     # Emoji policy
     emoji_instruction = {
@@ -131,6 +182,12 @@ def _build_stylization_prompt(
     }.get(emoji, "Do not use any emojis")
     
     tone_instructions.append(emoji_instruction)
+    
+    # DEBUG: Print which tone instructions are being used
+    print(f"\n🎨 DEBUG: Tone Instructions Generated:")
+    print(f"   Warmth={warmth:.3f}, Empathy={empathy:.3f}, Formality={formality:.3f}, Hedging={hedging:.3f}")
+    for i, instr in enumerate(tone_instructions, 1):
+        print(f"   {i}. {instr}")
     
     # Guardrails
     guardrails = [
@@ -149,7 +206,9 @@ TONE INSTRUCTIONS:
 SAFETY GUARDRAILS:
 {chr(10).join(f"• {rule}" for rule in guardrails)}
 
-TASK: Rephrase the following text maintaining its factual content while applying the tone guidelines above.
+CRITICAL: You MUST noticeably apply the tone instructions above. The rephrased text should sound meaningfully different from the original based on the warmth, empathy, and formality levels specified. Don't just make minimal changes - fully embody the requested tone.
+
+TASK: Rephrase the following text maintaining its factual content while STRONGLY applying the tone guidelines above.
 
 Original text: {text}
 

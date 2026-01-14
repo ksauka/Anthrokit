@@ -239,13 +239,13 @@ class LoanAssistant:
             if any(keyword in user_input.lower() for keyword in greeting_keywords) or user_input.lower() in ['yes', 'y']:
                 self.conversation_state = ConversationState.COLLECTING_INFO
                 base_greeting = ("Hello! I'm Luna, your personal loan application assistant. 😊 I will process your information and provide you with your loan qualification results. If you have any questions about the results, feel free to ask!\n\n"
-                       "**I will collect information step by step** (not all at once):\n"
-                       "• **Step 1-2:** Personal Information (Age, Gender, etc.)\n"
-                       "• **Step 3-5:** Employment Details (Work Class, Occupation, Hours)\n"
-                       "• **Step 6:** Education Level\n"
-                       "• **Step 7-8:** Financial Information (Capital Gains/Losses)\n"
-                       "• **Step 9-10:** Background & Relationship Status\n\n"
-                       "Let's start with **Step 1:**")
+                       "**I will collect 10 pieces of information, one at a time:**\n"
+                       "• Personal details (age, gender)\n"
+                       "• Employment information (work type, occupation, hours)\n"
+                       "• Education level\n"
+                       "• Financial details (capital gains/losses)\n"
+                       "• Background information\n\n"
+                       "Let's start with the first question:")
                 
                 # Enhance greeting with LLM
                 if NATURAL_CONVERSATION_AVAILABLE:
@@ -259,13 +259,12 @@ class LoanAssistant:
                 return f"{base_greeting}\n\n{self._get_next_question()}"
             else:
                 base_prompt = ("Hi there! I'm Luna, your personal loan application assistant. 😊 I will process your information and provide you with your loan qualification results. If you have any questions about the results, feel free to ask!\n\n"
-                       "**I will collect your information step by step** (not all at once)\n"
-                       "• **Step 1-2:** Personal Information (Age, Gender, etc.)\n"
-                       "• **Step 3-5:** Employment Details (Work Class, Occupation, Hours)\n"
-                       "• **Step 6:** Education Level\n"
-                       "• **Step 7-8:** Financial Information (Capital Gains/Losses)\n"
-                       "• **Step 9-10:** Background & Relationship Status\n\n"
-                    
+                       "**I will collect 10 pieces of information, one at a time:**\n"
+                       "• Personal details (age, gender)\n"
+                       "• Employment information (work type, occupation, hours)\n"
+                       "• Education level\n"
+                       "• Financial details (capital gains/losses)\n"
+                       "• Background information\n\n"
                        "Would you like to start your loan application? Just say 'yes' or 'start' to begin!")
                 
                 # Enhance with LLM
@@ -283,14 +282,14 @@ class LoanAssistant:
             if any(keyword in user_input.lower() for keyword in greeting_keywords) or user_input.lower() in ['yes', 'y']:
                 self.conversation_state = ConversationState.COLLECTING_INFO
                 base_greeting = ("AI Loan Assistant initialized. I will collect your information and process your loan qualification.\n\n"
-                       "**Information collection process** (sequential):\n"
-                       "• **Step 1-2:** Personal data (Age, Gender)\n"
-                       "• **Step 3-5:** Employment data (Work Class, Occupation, Hours)\n"
-                       "• **Step 6:** Education level\n"
-                       "• **Step 7-8:** Financial data (Capital Gains/Losses)\n"
-                       "• **Step 9-10:** Demographics & Relationship\n\n"
+                       "**Information collection process (10 data points):**\n"
+                       "• Personal data (age, gender)\n"
+                       "• Employment data (work type, occupation, hours)\n"
+                       "• Education level\n"
+                       "• Financial data (capital gains/losses)\n"
+                       "• Demographics & relationship\n\n"
                        "Progress tracking available in sidebar.\n\n"
-                       "**Step 1:**")
+                       "**First question:**")
                 
                 # Enhance with LLM for professional tone
                 if NATURAL_CONVERSATION_AVAILABLE:
@@ -304,12 +303,12 @@ class LoanAssistant:
                 return f"{base_greeting}\n\n{self._get_next_question()}"
             else:
                 base_prompt = ("AI Loan Assistant system ready. I will collect your data and evaluate your loan qualification.\n\n"
-                       "**Data collection process** (sequential):\n"
-                       "• **Step 1-2:** Personal data (Age, Gender)\n"
-                       "• **Step 3-5:** Employment data (Work Class, Occupation, Hours)\n"
-                       "• **Step 6:** Education level\n"
-                       "• **Step 7-8:** Financial data (Capital Gains/Losses)\n"
-                       "• **Step 9-10:** Demographics & Relationship\n\n"
+                       "**Data collection process (10 data points):**\n"
+                       "• Personal data (age, gender)\n"
+                       "• Employment data (work type, occupation, hours)\n"
+                       "• Education level\n"
+                       "• Financial data (capital gains/losses)\n"
+                       "• Demographics & relationship\n\n"
                        "Progress tracking available in sidebar.\n\n"
                        "Enter 'yes' or 'start' to begin data collection.")
                 
@@ -1381,28 +1380,24 @@ class LoanAssistant:
         
         for field in self.field_order:
             value = getattr(self.application, field)
-            step_num = self.field_to_step.get(field, 0)
-            step_desc = self.step_descriptions.get(step_num, field.replace('_', ' ').title())
+            field_desc = field.replace('_', ' ').title()
             
             if value is not None:
-                completed_fields.append(f"✅ **Step {step_num}:** {step_desc} - {value}")
+                completed_fields.append(f"✅ {field_desc}: {value}")
             else:
                 if current_step is None:  # First missing field is current step
-                    current_step = step_num
-                    missing_fields.append(f"🔄 **Step {step_num}:** {step_desc} *(Currently collecting)*")
+                    current_step = True
+                    missing_fields.append(f"🔄 {field_desc} *(Currently collecting)*")
                 else:
-                    missing_fields.append(f"⏳ **Step {step_num}:** {step_desc}")
+                    missing_fields.append(f"⏳ {field_desc}")
         
-        progress_msg = f"📊 **Application Progress: {completion:.0f}% Complete (Step {current_step or 10}/10)**\n\n"
+        progress_msg = f"📊 **Application Progress: {completion:.0f}% Complete**\n\n"
         
         if completed_fields:
-            progress_msg += "**✅ Completed Steps:**\n" + "\n".join(completed_fields) + "\n\n"
+            progress_msg += "**✅ Completed:**\n" + "\n".join(completed_fields) + "\n\n"
         
         if missing_fields:
-            progress_msg += "**📋 Remaining Steps:**\n" + "\n".join(missing_fields) + "\n\n"
-        
-        if current_step:
-            progress_msg += f"💡 **Next:** Continue with Step {current_step}\n\n"
+            progress_msg += "**📋 Remaining:**\n" + "\n".join(missing_fields) + "\n\n"
         
         progress_msg += "Would you like to continue filling out the application?"
         return progress_msg
@@ -1613,13 +1608,7 @@ class LoanAssistant:
         else:
             base_msg = f"Data received. {field_friendly}: {normalized_value}. Progress: {completion:.1f}% complete."
         
-        # Add next step info if available
-        if next_step:
-            step_desc = self.step_descriptions.get(next_step, '')
-            if config.show_anthropomorphic:
-                base_msg += f"\n\n📋 **Step {next_step}/10:** {step_desc}"
-            else:
-                base_msg += f"\n\nStep {next_step}/10: {step_desc}"
+        # Next step info removed - just show percentage
         
         # Enhance with LLM for natural conversation
         if NATURAL_CONVERSATION_AVAILABLE:
@@ -1668,7 +1657,13 @@ class LoanAssistant:
                     }
                     
                     expected_format = expected_formats.get(field, f"valid {field.replace('_', ' ')}")
-                    llm_message = enhance_validation_message(field, user_input, expected_format, attempt, high_anthropomorphism=True)
+                    # Pass personality-adjusted preset for validation messages
+                    preset = getattr(config, 'final_tone_config', None)
+                    llm_message = enhance_validation_message(
+                        field, user_input, expected_format, attempt, 
+                        preset=preset, 
+                        high_anthropomorphism=config.show_anthropomorphic
+                    )
                     
                     if llm_message:
                         return llm_message

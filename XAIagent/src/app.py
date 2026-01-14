@@ -626,7 +626,16 @@ Rate yourself on these traits (1 = Disagree strongly, 7 = Agree strongly):""")
                     for trait, scores in trait_scores.items()
                 }
                 
+                print(f"\n📊 DEBUG: Big Five Scores Calculated:")
+                for trait, score in personality.items():
+                    print(f"   {trait.capitalize()}: {score:.2f}")
+                
                 save_personality_to_session(personality)
+                print(f"✅ DEBUG: Personality saved to session state")
+                
+                # CRITICAL: Refresh config with new personality adjustments
+                from ab_config import config
+                config.refresh_personality_adjustments()
                 
                 st.success("✅ Personality profile saved! The assistant will now adapt to your preferences.")
                 st_rerun()

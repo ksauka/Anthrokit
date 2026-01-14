@@ -34,9 +34,9 @@ def _get_llm_backend():
     openai_key = os.getenv("OPENAI_API_KEY")
     if openai_key:
         try:
-            import openai
-            openai.api_key = openai_key
-            return ("openai", openai)
+            from openai import OpenAI
+            client = OpenAI(api_key=openai_key)
+            return ("openai", client)
         except ImportError:
             pass
     
@@ -53,10 +53,9 @@ def _get_llm_backend():
     return (None, None)
 
 
-def _call_openai(model_name: str, prompt: str, user_input: str, temperature: float, max_tokens: int):
-    """Call OpenAI API."""
-    import openai
-    response = openai.ChatCompletion.create(
+def _call_openai(model_name: str, prompt: str, user_input: str, temperature: float, max_tokens: int, client):
+    """Call OpenAI API using SDK v1.x."""
+    response = client.chat.completions.create(
         model=model_name,
         messages=[
             {"role": "system", "content": prompt},
@@ -171,7 +170,7 @@ def generate_with_control(
     
     try:
         if backend == "openai":
-            response_text = _call_openai(model_name, prompt, user_input, temperature, max_tokens)
+            response_text = _call_openai(model_name, prompt, user_input, temperature, max_tokens, backend_info)
         elif backend == "ollama":
             response_text = _call_ollama(model_name, prompt, user_input, temperature, max_tokens, backend_info)
         else:
