@@ -43,7 +43,10 @@ class InteractionLogger:
         else:
             self.repo_path = None
             
-        self.participant_id = participant_id or f"P{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+        # CRITICAL: participant_id must be explicit Prolific ID - no auto-generation
+        if not participant_id:
+            raise ValueError("participant_id is required and must be the Prolific ID")
+        self.participant_id = participant_id
         self.session_id = f"S{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
         
         # Session-level data
@@ -56,14 +59,30 @@ class InteractionLogger:
             "end_timestamp": None,
             "total_turns": 0,
             "completion_status": "in_progress",  # in_progress, completed, abandoned
-            "turns": []
+            "turns": [],
+            
+            # Task fidelity tracking (per requirements)
+            "decision_seen": False,
+            "why_triggered": False,
+            "num_corrections": 0,
+            
+            # Categorical tone settings (will be set in start_session)
+            "emoji_policy_final": None,
+            "selfref_final": None,
+            
+            # Generation metadata
+            "model_name": None,
+            "temperature_base": None,
+            "temperature_final": None,
+            "temp_boost_applied": False
         }
         
         # Current turn tracking
         self.current_turn = None
         self.turn_counter = 0
         
-    def start_session(self, condition_preset: str, condition_adapt: bool, personality_scores: Dict = None):
+    def start_session(self, condition_preset: str, condition_adapt: bool, personality_scores: Dict = None,
+                     base_tone: Dict = None, final_tone: Dict = None):
         """
         Start a new session.
         
@@ -71,10 +90,27 @@ class InteractionLogger:
             condition_preset: "HighA" or "LowA"
             condition_adapt: True if personality adaptation enabled
             personality_scores: TIPI Big Five scores {E, A, C, N, O}
+            base_tone: Base tone configuration (warmth, empathy, formality, hedging)
+            final_tone: Final tone after personality adjustments
         """
         self.session_data["condition_preset"] = condition_preset
         self.session_data["condition_adapt"] = condition_adapt
         self.session_data["personality_scores"] = personality_scores or {}
+        
+        # REQUIRED: Set tone configuration (base and final)
+        if base_tone:
+            self.session_data["warmth_base"] = base_tone.get("warmth")
+            self.session_data["empathy_base"] = base_tone.get("empathy")
+            self.session_data["formality_base"] = base_tone.get("formality")
+            self.session_data["hedging_base"] = base_tone.get("hedging")
+            
+        if final_tone:
+            self.session_data["warmth_final"] = final_tone.get("warmth")
+            self.session_data["empathy_final"] = final_tone.get("empathy")
+            self.session_data["formality_final"] = final_tone.get("formality")
+            self.session_data["hedging_final"] = final_tone.get("hedging")
+            self.session_data["emoji_policy_final"] = final_tone.get("emoji", 0)
+            self.session_data["selfref_final"] = 1 if final_tone.get("self_reference") else 0
         
         print(f"[InteractionLogger] Session started: {self.session_id}")
         print(f"  Participant: {self.participant_id}")
@@ -93,79 +129,24 @@ class InteractionLogger:
         self.current_turn = {
             "turn_id": self.turn_counter,
             "turn_type": turn_type,
-            "prompt_id": prompt_id,
-            "user_input": user_input,
             "timestamp": datetime.now().isoformat(),
-            
-            # Will be populated before end_turn()
-            "decoding": {},
-            "tone_trace": {},
-            "deltas": {},
-            "assistant_output": None,
-            "judge_evaluation": None,
-            "latency_ms": None,
-            "tokens_used": None,
-            "error": None
         }
         
-    def log_decoding_params(self, base_temp: float, boost_applied: float, final_temp: float, 
-                           max_tokens: int = None, top_p: float = None):
-        """
-        Log LLM decoding parameters for this turn.
+        # Only add fields if they have values
+        if prompt_id:
+            self.current_turn["prompt_id"] = prompt_id
+        if user_input:
+            self.current_turn["user_input"] = user_input
         
-        Args:
-            base_temp: Base temperature from preset
-            boost_applied: Temperature boost added (0.0 if none)
-            final_temp: Final temperature used (base + boost, capped at 0.7)
-            max_tokens: Max tokens for generation
-            top_p: Nucleus sampling parameter (if used)
-        """
-        if self.current_turn:
-            self.current_turn["decoding"] = {
-                "base_temp": base_temp,
-                "boost_applied": boost_applied,
-                "final_temp": final_temp,
-                "max_tokens": max_tokens,
-                "top_p": top_p
-            }
-    
-    def log_tone_trace(self, base_preset: Dict, personality_adjustments: Dict, final_tone_config: Dict):
-        """
-        Log tone parameter trace (base → personality → final).
-        
-        Args:
-            base_preset: Base tone config from condition (HighA/LowA)
-            personality_adjustments: TIPI Big Five scores applied
-            final_tone_config: Final tone config after personality mapping
-        """
-        if self.current_turn:
-            self.current_turn["tone_trace"] = {
-                "base_preset": base_preset.copy(),
-                "personality_adjustments": personality_adjustments.copy() if personality_adjustments else {},
-                "final_tone_config": final_tone_config.copy()
-            }
-            
-            # Calculate deltas (final - base)
-            self.current_turn["deltas"] = {}
-            for key in ["warmth", "empathy", "formality", "hedging"]:
-                if key in base_preset and key in final_tone_config:
-                    self.current_turn["deltas"][key] = round(
-                        final_tone_config[key] - base_preset[key], 3
-                    )
-    
-    def log_output(self, assistant_output: str, latency_ms: float = None, tokens_used: int = None):
+    def log_output(self, assistant_output: str):
         """
         Log assistant's generated output.
         
         Args:
             assistant_output: Generated text
-            latency_ms: API latency in milliseconds
-            tokens_used: Total tokens used (prompt + completion)
         """
-        if self.current_turn:
+        if self.current_turn and assistant_output:
             self.current_turn["assistant_output"] = assistant_output
-            self.current_turn["latency_ms"] = latency_ms
-            self.current_turn["tokens_used"] = tokens_used
             self.current_turn["word_count"] = len(assistant_output.split())
     
     def log_judge_evaluation(self, scores: Dict[str, float], evidence: Dict[str, List[str]]):
@@ -190,6 +171,36 @@ class InteractionLogger:
                 "message": error_message
             }
     
+    def log_task_event(self, event_type: str):
+        """
+        Log task fidelity events (per requirements).
+        
+        Args:
+            event_type: "decision_seen" | "why_triggered" | "correction"
+        """
+        if event_type == "decision_seen":
+            self.session_data["decision_seen"] = True
+        elif event_type == "why_triggered":
+            self.session_data["why_triggered"] = True
+        elif event_type == "correction":
+            self.session_data["num_corrections"] += 1
+    
+    def set_generation_metadata(self, model_name: str, temp_base: float, 
+                                temp_final: float, temp_boost: bool):
+        """
+        Set generation metadata for the session (REQUIRED).
+        
+        Args:
+            model_name: Model identifier (e.g., "gpt-4o-mini")
+            temp_base: Base temperature from preset
+            temp_final: Final temperature after boost
+            temp_boost: Whether temperature boost was applied
+        """
+        self.session_data["model_name"] = model_name
+        self.session_data["temperature_base"] = temp_base
+        self.session_data["temperature_final"] = temp_final
+        self.session_data["temp_boost_applied"] = temp_boost
+    
     def end_turn(self):
         """Finalize current turn and add to session."""
         if self.current_turn:
@@ -212,12 +223,33 @@ class InteractionLogger:
         self.session_data["completion_status"] = completion_status
         self.session_data["total_turns"] = len(self.session_data["turns"])
         
+        # Calculate time_on_task_sec
+        if self.session_data["start_timestamp"] and self.session_data["end_timestamp"]:
+            start = datetime.fromisoformat(self.session_data["start_timestamp"])
+            end = datetime.fromisoformat(self.session_data["end_timestamp"])
+            self.session_data["time_on_task_sec"] = (end - start).total_seconds()
+        
+        # Note: Tone configuration should already be set in start_session
+        
         # Save final session log
         self._save_session(backup=False)
         
         print(f"[InteractionLogger] Session ended: {completion_status}")
         print(f"  Total turns: {self.session_data['total_turns']}")
         print(f"  Log saved: {self._get_log_path()}")
+    
+    def _clean_data(self, data):
+        """Recursively remove null, empty dict, empty list, and 0 values from data."""
+        if isinstance(data, dict):
+            return {
+                k: self._clean_data(v) 
+                for k, v in data.items() 
+                if v is not None and v != {} and v != [] and v != ""
+            }
+        elif isinstance(data, list):
+            return [self._clean_data(item) for item in data]
+        else:
+            return data
     
     def _save_session(self, backup: bool = False):
         """Save session data to GitHub private repo via API."""
@@ -234,8 +266,11 @@ class InteractionLogger:
         # File path in GitHub repo - organized by condition
         file_path = f"interaction_logs/{condition_name}/{filename}"
         
+        # Clean session data - remove null/empty fields
+        clean_data = self._clean_data(self.session_data)
+        
         # Prepare file content
-        file_content = json.dumps(self.session_data, indent=2)
+        file_content = json.dumps(clean_data, indent=2)
         file_content_encoded = base64.b64encode(file_content.encode()).decode()
         
         # GitHub API headers
@@ -307,86 +342,35 @@ class InteractionLogger:
 # Helper Functions for Integration
 # ============================================================================
 
-def create_logger_from_secrets(secrets, config) -> InteractionLogger:
+def create_logger_from_secrets(secrets, config, participant_id: str = None) -> InteractionLogger:
     """
     Create logger from Streamlit secrets and ab_config.
     
     Args:
         secrets: Streamlit secrets (st.secrets) with GITHUB_TOKEN and GITHUB_REPO
         config: The ab_config module with condition settings
+        participant_id: Prolific ID (REQUIRED - no auto-generation)
     
     Returns:
         Initialized InteractionLogger
+    
+    Raises:
+        ValueError: If participant_id is not provided
     """
+    if not participant_id:
+        raise ValueError("participant_id (Prolific ID) is required - no auto-generation allowed")
+    
     # Get GitHub credentials from secrets
     github_token = secrets.get("GITHUB_TOKEN", None)
     github_repo = secrets.get("GITHUB_REPO", None)
     
-    # Determine condition
-    condition_preset = "HighA" if config.show_anthropomorphic else "LowA"
-    condition_adapt = getattr(config, 'personality_adaptation_enabled', False)
-    
-    # Create logger with GitHub credentials
+    # Create logger with GitHub credentials and Prolific ID
     logger = InteractionLogger(
         github_token=github_token,
-        github_repo=github_repo
+        github_repo=github_repo,
+        participant_id=participant_id
     )
-    
-    # Get personality scores if available
-    personality_scores = None
-    if hasattr(config, 'user_personality') and config.user_personality:
-        personality_scores = {
-            "E": config.user_personality.get("extraversion", 4),
-            "A": config.user_personality.get("agreeableness", 4),
-            "C": config.user_personality.get("conscientiousness", 4),
-            "N": config.user_personality.get("neuroticism", 4),
-            "O": config.user_personality.get("openness", 4)
-        }
-    
-    logger.start_session(condition_preset, condition_adapt, personality_scores)
     
     return logger
 
-
-def log_generation(logger: InteractionLogger, turn_type: str, config, 
-                  assistant_output: str, latency_ms: float = None):
-    """
-    Quick helper to log a generation turn.
-    
-    Args:
-        logger: InteractionLogger instance
-        turn_type: Type of turn (greet/collect/correct/etc)
-        config: ab_config with tone settings
-        assistant_output: Generated text
-        latency_ms: API latency
-    """
-    logger.start_turn(turn_type=turn_type)
-    
-    # Log decoding params
-    preset = getattr(config, 'final_tone_config', None)
-    if preset:
-        base_temp = preset.get("temperature", 0.3)
-        warmth = preset.get("warmth", 0.25)
-        
-        # Calculate boost (replicate production logic)
-        boost = 0.25 if warmth > 0.50 else 0.0
-        final_temp = min(base_temp + boost, 0.7)
-        
-        logger.log_decoding_params(
-            base_temp=base_temp,
-            boost_applied=boost,
-            final_temp=final_temp
-        )
-    
-    # Log tone trace
-    if hasattr(config, 'base_preset') and hasattr(config, 'final_tone_config'):
-        logger.log_tone_trace(
-            base_preset=config.base_preset,
-            personality_adjustments=getattr(config, 'user_personality', {}),
-            final_tone_config=config.final_tone_config
-        )
-    
-    # Log output
-    logger.log_output(assistant_output, latency_ms)
-    
-    logger.end_turn()
+# End of InteractionLogger module

@@ -359,17 +359,27 @@ CONDITION_NAME_MAP = {
 
 condition_name = CONDITION_NAME_MAP.get((anthro, personality), "unknown_condition")
 
-# Initialize GitHub logger with Streamlit secrets
+# Initialize GitHub logger with Streamlit secrets (after Prolific ID is captured)
 if 'interaction_logger' not in st.session_state:
-    # Mock config for logger initialization
-    class LoggerConfig:
-        show_anthropomorphic = (anthro == "high")
-        personality_adaptation_enabled = (personality == "enabled")
-        user_personality = None  # Will be set after personality survey
-    
-    logger_config = LoggerConfig()
-    st.session_state.interaction_logger = create_logger_from_secrets(st.secrets, logger_config)
-    st.session_state.interaction_logger.condition_name = condition_name
+    # CRITICAL: Only initialize logger after Prolific ID is captured
+    prolific_id = st.session_state.get("prolific_pid")
+    if not prolific_id:
+        # Logger will be initialized later after Prolific ID input
+        pass
+    else:
+        # Mock config for logger initialization
+        class LoggerConfig:
+            show_anthropomorphic = (anthro == "high")
+            personality_adaptation_enabled = (personality == "enabled")
+            user_personality = None  # Will be set after personality survey
+        
+        logger_config = LoggerConfig()
+        # Pass Prolific ID directly to logger - no auto-generation
+        st.session_state.interaction_logger = create_logger_from_secrets(
+            st.secrets, logger_config, participant_id=prolific_id
+        )
+        st.session_state.interaction_logger.condition_name = condition_name
+        print(f"✅ DEBUG: Logger initialized with Prolific ID: {prolific_id}")
     
     # Add compatibility methods for old data_logger API
     def log_interaction_compat(interaction_type: str, content: Dict):
@@ -390,8 +400,9 @@ if 'interaction_logger' not in st.session_state:
         # Handle assistant responses - log output to current turn
         elif "assistant" in interaction_type.lower() or "response" in interaction_type.lower():
             if logger_inst.current_turn:
-                response_text = content.get("response", content.get("message", ""))
-                logger_inst.log_output(response_text)
+                response_text = content.get("content", content.get("response", content.get("message", "")))
+                if response_text:  # Only log if there's actual content
+                    logger_inst.log_output(response_text)
                 # End turn after assistant response
                 logger_inst.end_turn()
         
@@ -740,16 +751,53 @@ Rate yourself on these traits (1 = Disagree strongly, 7 = Agree strongly):""")
                 
                 # Initialize logger session with personality data and Prolific ID
                 if 'interaction_logger' in st.session_state:
-                    prolific_id = st.session_state.get("prolific_pid", "unknown")
+                    # CRITICAL: Must have real Prolific ID - no fallback
+                    prolific_id = st.session_state.get("prolific_pid")
+                    if not prolific_id:
+                        st.error("⚠️ ERROR: No Prolific ID found. Cannot start logging.")
+                        st.stop()
+                    
                     logger = st.session_state.interaction_logger
                     # Update participant ID with Prolific ID
                     logger.participant_id = prolific_id
                     logger.session_data["participant_id"] = prolific_id
-                    # Start session with condition and personality data
+                    
+                    # Get tone configuration from config
+                    from ab_config import config
+                    base_tone = {
+                        "warmth": config.base_preset.get("warmth", config.warmth),
+                        "empathy": config.base_preset.get("empathy", config.empathy),
+                        "formality": config.base_preset.get("formality", config.formality),
+                        "hedging": config.base_preset.get("hedging", getattr(config, 'hedging', 0.45))
+                    } if hasattr(config, 'base_preset') else {
+                        "warmth": config.warmth,
+                        "empathy": config.empathy,
+                        "formality": config.formality,
+                        "hedging": getattr(config, 'hedging', 0.45)
+                    }
+                    
+                    final_tone = {
+                        "warmth": config.warmth,
+                        "empathy": config.empathy,
+                        "formality": config.formality,
+                        "hedging": getattr(config, 'hedging', 0.45),
+                        "emoji": 1 if config.emoji_style else 0,
+                        "self_reference": config.self_reference
+                    }
+                    
+                    # Start session with condition, personality, and tone data
                     condition_preset = "HighA" if anthro == "high" else "LowA"
                     condition_adapt = (personality_required)
-                    logger.start_session(condition_preset, condition_adapt, personality)
-                    print(f"✅ DEBUG: Logger session started with personality: {personality}")
+                    logger.start_session(condition_preset, condition_adapt, personality, base_tone, final_tone)
+                    
+                    # Set generation metadata
+                    temp_base = config.temperature
+                    temp_boost_applied = config.warmth > 0.50
+                    temp_boost = 0.25 if temp_boost_applied else 0.0
+                    temp_final = min(temp_base + temp_boost, 0.7)
+                    logger.set_generation_metadata("gpt-4o-mini", temp_base, temp_final, temp_boost_applied)
+                    
+                    print(f"✅ DEBUG: Logger session started - Prolific ID: {prolific_id}")
                 
                 st.success("✅ Personality profile saved! The assistant will now adapt to your preferences.")
                 st_rerun()
@@ -761,17 +809,53 @@ Rate yourself on these traits (1 = Disagree strongly, 7 = Agree strongly):""")
 # Initialize logger session if not already started
 if 'interaction_logger' in st.session_state and 'logger_session_started' not in st.session_state:
     logger = st.session_state.interaction_logger
-    prolific_id = st.session_state.get("prolific_pid", "unknown")
+    # CRITICAL: Must have real Prolific ID - no fallback
+    prolific_id = st.session_state.get("prolific_pid")
+    if not prolific_id:
+        st.error("⚠️ ERROR: No Prolific ID found. Cannot start logging.")
+        st.stop()
+    
     logger.participant_id = prolific_id
     logger.session_data["participant_id"] = prolific_id
+    
+    # Get tone configuration from config
+    from ab_config import config
+    base_tone = {
+        "warmth": config.base_preset.get("warmth", config.warmth),
+        "empathy": config.base_preset.get("empathy", config.empathy),
+        "formality": config.base_preset.get("formality", config.formality),
+        "hedging": config.base_preset.get("hedging", getattr(config, 'hedging', 0.45))
+    } if hasattr(config, 'base_preset') else {
+        "warmth": config.warmth,
+        "empathy": config.empathy,
+        "formality": config.formality,
+        "hedging": getattr(config, 'hedging', 0.45)
+    }
+    
+    final_tone = {
+        "warmth": config.warmth,
+        "empathy": config.empathy,
+        "formality": config.formality,
+        "hedging": getattr(config, 'hedging', 0.45),
+        "emoji": 1 if config.emoji_style else 0,
+        "self_reference": config.self_reference
+    }
     
     condition_preset = "HighA" if anthro == "high" else "LowA"
     condition_adapt = personality_required
     personality_scores = get_personality_from_session() if personality_required else {}
     
-    logger.start_session(condition_preset, condition_adapt, personality_scores)
+    logger.start_session(condition_preset, condition_adapt, personality_scores, base_tone, final_tone)
+    
+    # Set generation metadata
+    temp_base = config.temperature
+    temp_boost_applied = config.warmth > 0.50
+    temp_boost = 0.25 if temp_boost_applied else 0.0
+    temp_final = min(temp_base + temp_boost, 0.7)
+    logger.set_generation_metadata("gpt-4o-mini", temp_base, temp_final, temp_boost_applied)
+    
     st.session_state.logger_session_started = True
-    print(f"✅ DEBUG: Logger session initialized - Condition: {condition_preset}, Adapt: {condition_adapt}")
+    print(f"✅ DEBUG: Logger session initialized - Prolific ID: {prolific_id}, Condition: {condition_preset}")
 
 # Initialize loan assistant
 if 'loan_assistant' not in st.session_state:
@@ -1046,6 +1130,12 @@ if send_button and user_message:
     # Handle the message through loan assistant
     assistant_response = st.session_state.loan_assistant.handle_message(user_message)
     
+    # Check if decision was just provided
+    if logger and hasattr(logger, 'log_task_event'):
+        if (st.session_state.loan_assistant.conversation_state.value == 'complete' and 
+            st.session_state.loan_assistant.application.loan_approved is not None):
+            logger.log_task_event("decision_seen")
+    
     # Log assistant response
     if logger:
         logger.log_interaction("assistant_response", {
@@ -1141,6 +1231,9 @@ elif current_state == 'complete':
             if st.button("Explain Decision", key="quick_explain", width="stretch"):
                 if logger:
                     logger.log_interaction("explanation_request", {"type": "decision_explanation"})
+                    # Track that user triggered "why" explanation
+                    if hasattr(logger, 'log_task_event'):
+                        logger.log_task_event("why_triggered")
                 response = st.session_state.loan_assistant.handle_message("explain")
                 st.session_state.chat_history.append(("explain", response))
                 st_rerun()
@@ -1159,6 +1252,9 @@ elif current_state == 'complete':
         if st.button("Explain Decision", key="quick_explain", width="stretch"):
             if logger:
                 logger.log_interaction("explanation_request", {"type": "decision_explanation"})
+                # Track that user triggered "why" explanation
+                if hasattr(logger, 'log_task_event'):
+                    logger.log_task_event("why_triggered")
             response = st.session_state.loan_assistant.handle_message("explain")
             st.session_state.chat_history.append(("explain", response))
             st_rerun()
