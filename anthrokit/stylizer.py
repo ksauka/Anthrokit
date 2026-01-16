@@ -135,7 +135,9 @@ def _build_stylization_prompt(
         print(f"      ✅ Adding: {instr}")
         tone_instructions.append(instr)
     
-    if formality > 0.80:
+    if formality >= 0.95:
+        tone_instructions.append("Use MAXIMALLY formal, robotic, machine-like language - be extremely mechanical, impersonal, and bureaucratic. Write like an automated system, not a human. Use passive voice, technical terminology, and avoid any conversational elements.")
+    elif formality > 0.80:
         tone_instructions.append("Maintain VERY formal, academic language - be extremely precise and structured")
     elif formality > 0.60:
         tone_instructions.append("Maintain formal, professional language")
