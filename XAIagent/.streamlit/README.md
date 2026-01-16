@@ -13,7 +13,7 @@ OPENAI_API_KEY = "sk-proj-YOUR-KEY-HERE"
 OPENAI_MODEL = "gpt-4o-mini"
 ```
 
-⚠️ **Never commit `secrets.toml`** - it's already in `.gitignore`
+
 
 ## Streamlit Cloud Deployment
 
