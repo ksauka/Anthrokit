@@ -11,48 +11,6 @@ to create personality-adaptive prompts using PURE ARCHITECTURE:
          ↓
     stylizer.py → applies personality-driven tone
 
-KEY INTEGRATION:
-    ✅ Uses anthrokit.scaffolds for base, neutral content structures
-    ✅ Adds loan-specific domain knowledge and constraints
-    ✅ Uses anthrokit.stylizer to convert personality-adjusted token values
-       (warmth, empathy, formality) into natural language instructions
-    ✅ Personality values ACTUALLY affect generated prompts (not just logged)
-
-USAGE:
-    FOR LOAN DOMAIN (XAIagent):
-        >>> from anthrokit.prompts import build_loan_system_prompt
-        >>> from XAIagent.src.ab_config import config
-        >>> 
-        >>> # Uses personality-adjusted values from config.final_tone_config
-        >>> system_prompt = build_loan_system_prompt(
-        ...     preset=config.final_tone_config,
-        ...     domain_context="credit pre-assessment"
-        ... )
-    
-    FOR NEW DOMAINS:
-        1. Copy this file to your domain app folder
-        2. Replace "loan/credit" with your domain terminology
-        3. Modify domain-specific constraints for your use case
-        4. Keep the scaffold + stylizer integration pattern
-
-ARCHITECTURAL PATTERN:
-    User Personality Traits
-        ↓ (map_traits_to_token_adjustments)
-    Token Adjustments (warmth: +0.30, empathy: +0.17)
-        ↓ (apply_personality_to_preset)
-    Final Tone Config (warmth: 0.85, empathy: 0.72)
-        ↓ (scaffolds.greet/decide/explain_*)
-    Base Content (neutral, domain-agnostic)
-        ↓ (Add domain-specific context: "credit", "loan approval")
-    Domain-Enhanced Content
-        ↓ (_build_stylization_prompt)
-    Natural Language Instructions ("Use warm, friendly tone")
-        ↓ (build_loan_system_prompt)
-    Complete System Prompt (tone + domain content)
-        ↓
-    LLM Generation
-
-This is a WORKING EXAMPLE that XAIagent uses in production.
 """
 
 from __future__ import annotations
@@ -276,19 +234,7 @@ def build_loan_system_prompt(
     Returns:
         Complete system prompt with personality-driven tone + domain instructions
         
-    Example:
-        >>> from anthrokit.config import load_preset
-        >>> from anthrokit.personality import apply_personality_to_preset
-        >>> 
-        >>> # Get personality-adjusted preset
-        >>> base = load_preset("HighA")
-        >>> personality = {"extraversion": 7.0, "agreeableness": 6.0, ...}
-        >>> final = apply_personality_to_preset(base, personality)
-        >>> 
-        >>> # Generate prompt (personality affects tone automatically)
-        >>> prompt = build_loan_system_prompt(preset=final)
-        >>> # warmth=0.85 → "Use a warm, friendly tone"
-        >>> # empathy=0.72 → "Show empathy and understanding"
+
     """
     # Step 1: Get base greeting from scaffold (domain-agnostic)
     base_greeting = greet(context=domain_context)
@@ -347,12 +293,6 @@ def build_meta_question_prompt(
     Returns:
         System prompt for meta-question response
         
-    Example:
-        >>> prompt = build_meta_question_prompt(
-        ...     preset=final_tone_config,
-        ...     field="education",
-        ...     user_question="why do you need my education level?"
-        ... )
     """
     field_friendly = field.replace('_', ' ')
     
@@ -423,13 +363,7 @@ def build_validation_message_prompt(
     Returns:
         System prompt for validation message generation
         
-    Example:
-        >>> prompt = build_validation_message_prompt(
-        ...     preset=final_tone_config,
-        ...     field="age",
-        ...     expected_format="number between 18 and 100",
-        ...     attempt=2
-        ... )
+   
     """
     field_friendly = field.replace('_', ' ')
     
@@ -495,11 +429,7 @@ def build_explanation_prompt(
     Returns:
         System prompt for explanation generation
         
-    Example:
-        >>> prompt = build_explanation_prompt(
-        ...     preset=final_tone_config,
-        ...     explanation_type="shap"
-        ... )
+
     """
     if _is_high_anthropomorphism(preset):
         if explanation_type == "shap":
@@ -635,11 +565,7 @@ def build_general_enhancement_prompt(
     Returns:
         System prompt for response enhancement
         
-    Example:
-        >>> prompt = build_general_enhancement_prompt(
-        ...     preset=final_tone_config,
-        ...     response_type="explanation"
-        ... )
+
     """
     domain_instructions = """You are rewriting system responses for end users.
 

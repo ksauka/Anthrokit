@@ -18,11 +18,6 @@ Design Principle:
     Scaffolds contain only factual content. Tone modulation (warmth, formality,
     empathy) is applied separately via stylizer or pattern-based functions.
 
-Example:
-    >>> from anthrokit.scaffolds import greet
-    >>> base = greet(context="support request")
-    >>> print(base)
-    "This assistant can help with your support request."
 """
 
 from __future__ import annotations

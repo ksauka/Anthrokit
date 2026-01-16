@@ -40,20 +40,3 @@ def save_to_github(repo, path, content, commit_message, github_token):
         print(f"GitHub API error: {r.status_code} {r.text}")
         return False
 
-# Example usage in Streamlit:
-# import streamlit as st
-# from github_saver import save_to_github
-#
-# feedback = st.text_area("Your feedback")
-# if st.button("Submit Feedback"):
-#     success = save_to_github(
-#         repo="yourusername/yourrepo",
-#         path=f"feedback/{st.session_state.get('user_id','anon')}.txt",
-#         content=feedback,
-#         commit_message="User feedback submission",
-#         github_token=st.secrets["GITHUB_TOKEN"]
-#     )
-#     if success:
-#         st.success("Feedback saved to GitHub!")
-#     else:
-#         st.error("Failed to save feedback.")

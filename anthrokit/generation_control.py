@@ -14,8 +14,6 @@ Phase 2 (Future):
 - Tone scoring and ranking
 - Best candidate selection
 
-Author: AnthroKit Research Team
-Last Updated: January 6, 2026
 """
 
 from typing import Dict, List, Optional, Callable, Tuple, Any

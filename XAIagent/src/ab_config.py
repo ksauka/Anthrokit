@@ -67,7 +67,6 @@ class AppConfig:
 
     def _load_anthrokit_preset(self):
         """Load AnthroKit configuration using anthrokit package.
-        If ADAPTIVE_MODE is enabled, uses ThresholdOptimizer for ranged exploration.
         Supports personality-based personalization."""
         try:
             from anthrokit import load_preset

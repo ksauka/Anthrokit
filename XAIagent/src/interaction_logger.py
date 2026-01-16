@@ -8,8 +8,6 @@ personality adaptation in real-world usage.
 Logs are pushed directly to GitHub private repo using GitHub API.
 Works in both local and Streamlit Cloud environments.
 
-Author: AnthroKit Research Team
-Date: January 14, 2026
 """
 
 import json

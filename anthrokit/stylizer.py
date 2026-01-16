@@ -6,14 +6,7 @@ either LLM-based stylization (when available) or pattern-based fallback rules.
 The stylizer respects token values (warmth, formality, empathy, etc.) and
 enforces guardrails for responsible anthropomorphism.
 
-Example:
-    >>> from anthrokit.stylizer import stylize_text
-    >>> from anthrokit import load_preset
-    >>> preset = load_preset("HighA")
-    >>> base = "Preliminary result: declined."
-    >>> styled = stylize_text(base, preset)
-    >>> print(styled)
-    "I know this isn't ideal — your preliminary result is declined."
+
 """
 
 from __future__ import annotations

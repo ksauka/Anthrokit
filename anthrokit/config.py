@@ -3,11 +3,7 @@
 This module handles loading and validation of anthrokit.yaml configuration files,
 providing access to token definitions, presets, and policy guardrails.
 
-Example:
-    >>> from anthrokit.config import load_preset
-    >>> preset = load_preset("HighA")
-    >>> print(preset["warmth"])
-    0.7
+
 """
 
 from __future__ import annotations

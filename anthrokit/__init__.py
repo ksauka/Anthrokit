@@ -65,12 +65,7 @@ from .validators import (
     post_process_response,
 )
 
-# Adaptive optimization (research utilities)
-from .adaptive import (
-    ThresholdExplorer,
-    ThresholdOptimizer,
-    OutcomeRecord,
-)
+# Personality adjustments
 from .personality import (
     collect_personality_traits,
     collect_personality_once,
@@ -124,10 +119,6 @@ __all__ = [
     "validate_guardrails",
     "limit_emojis",
     "post_process_response",
-    # Adaptive
-    "ThresholdExplorer",
-    "ThresholdOptimizer",
-    "OutcomeRecord",
     # Personality
     "collect_personality_traits",
     "collect_personality_once",
@@ -146,11 +137,4 @@ __all__ = [
     "get_anthropomorphism_distribution",
     "get_app_usage_stats",
     "export_analytics",
-    # Integrations (Streamlit helpers)
-    "init_adaptive_session",
-    "get_current_preset",
-    "record_session_outcome",
-    "get_optimization_stats",
-    "get_best_preset",
-    "display_admin_panel",
 ]

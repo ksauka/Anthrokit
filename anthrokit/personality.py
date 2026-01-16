@@ -4,15 +4,7 @@ Big 5 Personality Trait Collection for AnthroKit Research.
 Measures individual differences that moderate anthropomorphism effects.
 Uses validated short-form Big 5 inventory (10-item TIPI scale).
 
-Research Question:
-    Do personality traits moderate the Anthropomorphism → Social Presence relationship?
-    
-Hypotheses:
-    - High extraversion → Prefers high warmth/anthropomorphism
-    - High openness → Receptive to AI anthropomorphism
-    - High neuroticism → Prefers formal/low anthropomorphism (need for control)
-    - High agreeableness → Responds positively to empathy tokens
-    - Conscientiousness → Prefers accuracy over warmth
+
 """
 
 import streamlit as st
@@ -335,35 +327,6 @@ def apply_personality_to_preset(
 #   adjusted = base_preset + deltas (clamped to [0.0, 1.0])
 
 
-# ========== INTEGRATION WITH ADAPTIVE FRAMEWORK ==========
-
-def adaptive_with_personality(
-    personality: Dict[str, float],
-    optimizer: 'ThresholdOptimizer',
-    outcomes: Dict[str, float]
-):
-    """Record outcome with personality data for moderation analysis.
-    
-    Args:
-        personality: Big 5 personality traits
-        optimizer: ThresholdOptimizer instance
-        outcomes: Outcome metrics including social_presence
-        
-    Example:
-        personality = collect_personality_traits()
-        preset = optimizer.get_next_condition()
-        # ... run experiment ...
-        adaptive_with_personality(personality, optimizer, outcomes)
-    """
-    preset = optimizer.preset_pool[-1]  # Current preset
-    
-    optimizer.record_outcome(
-        preset=preset,
-        outcomes=outcomes,
-        personality=personality
-    )
-
-
 __all__ = [
     "collect_personality_traits",
     "display_personality_profile",
@@ -372,6 +335,6 @@ __all__ = [
     "collect_personality_once",
     "map_traits_to_token_adjustments",
     "apply_personality_to_preset",
-    "adaptive_with_personality",
     "BIG_5_ITEMS",
 ]
+

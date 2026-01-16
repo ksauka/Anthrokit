@@ -3,12 +3,7 @@
 This module implements emoji policy enforcement, guardrail validation,
 and content post-processing to ensure responsible anthropomorphism.
 
-Example:
-    >>> from anthrokit.validators import limit_emojis
-    >>> text = "Great! 😊 Here are your results: 1. Score ✅ 2. Status 🎉"
-    >>> cleaned = limit_emojis(text, max_emojis=1, ban_in_lists=True)
-    >>> print(cleaned)
-    "Great! 😊 Here are your results: 1. Score 2. Status"
+
 """
 
 from __future__ import annotations
