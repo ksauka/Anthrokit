@@ -96,7 +96,7 @@ Repository = "https://github.com/your-org/anthrokit"
 
 [tool.setuptools]
 package-dir = {"" = "."}
-packages = ["anthrokit", "anthrokit.api"]
+packages = ["anthrokit"]
 
 [tool.setuptools.package-data]
 anthrokit = ["anthrokit.yaml"]
