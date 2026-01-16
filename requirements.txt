@@ -1,3 +1,6 @@
+# AnthroKit Package Dependencies
+pyyaml>=6.0.0
+
 # XAIagent Application Dependencies
 streamlit>=1.31.0
 pandas>=2.2.0
@@ -12,5 +15,5 @@ dtreeviz>=2.2.2
 openai>=1.0.0
 sentence-transformers>=2.2.0
 
-# AnthroKit Package Dependencies
-pyyaml>=6.0.0
+# Install AnthroKit package from repository root
+.
