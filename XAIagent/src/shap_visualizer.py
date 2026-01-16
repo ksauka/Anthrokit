@@ -3,6 +3,8 @@ SHAP Visualization Component for XAI Explanations
 Generates visual SHAP plots and explanations
 """
 
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for Streamlit
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd

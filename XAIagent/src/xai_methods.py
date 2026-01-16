@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for Streamlit
 import shap
 import numpy as np
 import dice_ml

@@ -1,4 +1,6 @@
 # Migrated and adapted from XAgent/Agent/answer.py for adult-only use
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for Streamlit
 import pandas as pd
 import os
 import json
