@@ -129,14 +129,15 @@ class AppConfig:
             # Store final config for logging (AFTER adjustments)
             self.final_tone_config = preset.copy()
             
-            # Load final preset values into config
-            self.emoji_style = preset.get("emoji", "none")
-            self.temperature = preset.get("temperature", 0.6 if self.show_anthropomorphic else 0.3)
-            self.persona_name = preset.get("persona_name", "Luna" if self.show_anthropomorphic else "")
-            self.warmth = preset.get("warmth", 0.7 if self.show_anthropomorphic else 0.25)
-            self.formality = preset.get("formality", 0.55 if self.show_anthropomorphic else 0.7)
-            self.empathy = preset.get("empathy", 0.55 if self.show_anthropomorphic else 0.15)
-            self.self_reference = preset.get("self_reference", "I" if self.show_anthropomorphic else "none")
+            # Load final preset values into config (fallbacks match _set_fallback_anthrokit_values)
+            self.emoji_style = preset.get("emoji", "subtle" if self.anthro == "high" else "none")
+            self.temperature = preset.get("temperature", 0.6 if self.anthro == "high" else (0.1 if self.anthro == "none" else 0.3))
+            self.persona_name = preset.get("persona_name", "Luna" if self.anthro == "high" else "")
+            self.warmth = preset.get("warmth", 0.7 if self.anthro == "high" else (0.0 if self.anthro == "none" else 0.25))
+            self.formality = preset.get("formality", 0.55 if self.anthro == "high" else (0.85 if self.anthro == "none" else 0.7))
+            self.empathy = preset.get("empathy", 0.55 if self.anthro == "high" else (0.0 if self.anthro == "none" else 0.15))
+            self.hedging = preset.get("hedging", 0.45 if self.anthro == "high" else (0.20 if self.anthro == "none" else 0.35))
+            self.self_reference = preset.get("self_reference", "I" if self.anthro == "high" else "none")
             
             # Check if adaptive mode is enabled - override adaptive tokens
             if self.adaptive_mode:
