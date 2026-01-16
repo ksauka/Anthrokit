@@ -103,8 +103,11 @@ def _load_or_train_model():
     
     if os.path.exists(model_path):
         try:
-            print(f"✅ Loading cached model from {model_path}")
-            return pickle.load(open(model_path, 'rb'))
+            print(f"✅ Loading pre-trained model from {model_path}")
+            with open(model_path, 'rb') as f:
+                model = pickle.load(f)
+            print(f"✅ Model loaded successfully ({model.n_estimators} trees)")
+            return model
         except Exception as e:
             print(f"⚠️ Failed to load model ({e}). Training new model...")
     

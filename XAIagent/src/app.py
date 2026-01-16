@@ -650,8 +650,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+@st.cache_resource(show_spinner="Loading AI system...")
 def initialize_system():
-    """Initialize the agent and all components"""
+    """Initialize the agent and all components (cached globally across all users)"""
     try:
         agent = Agent()
         answers = Answers(
@@ -677,8 +678,8 @@ def initialize_system():
         # Return None values to prevent further errors
         return None, None
 
-# Initialize system
-if 'agent' not in st.session_state:
+# Initialize system (uses cached resource - loads model only once)
+if 'agent' not in st.session_state or 'answers' not in st.session_state:
     st.session_state.agent, st.session_state.answers = initialize_system()
 
 # Check if initialization was successful
@@ -911,13 +912,7 @@ st.markdown("---")
 
 # Sidebar - keep minimal to avoid distracting from experimental task
 with st.sidebar:
-    # No restart option - users should complete one application per session
-    # Explanation style is controlled by the experimental condition, not user choice
-    
-    # A/B Testing Debug Info (only for development/testing - hidden from users)
-    # Uncomment the lines below only when debugging A/B testing locally
-    # if config.show_debug_info and os.getenv('HICXAI_DEBUG_MODE', 'false').lower() == 'true':
-    # What‑if Lab (shown after user asks what-if in counterfactual HIGH anthropomorphism conditions only)
+   
     if config.show_counterfactual and config.show_anthropomorphic and getattr(st.session_state.loan_assistant, 'show_what_if_lab', False):
         st.markdown("---")
         st.subheader("🧪 What‑if Lab")
@@ -1521,11 +1516,11 @@ if current_state == 'complete' and len(st.session_state.chat_history) > 5:
         """)
         
         elapsed_time = time.time() - st.session_state.get("start_time", time.time())
-        if elapsed_time >= 120:  # 2 minutes minimum engagement
+        if elapsed_time >= 180:  # 3 minutes minimum engagement
             if st.button("📋 Continue to Survey", type="primary", width="stretch", key="return_to_qualtrics"):
                 back_to_survey(done_flag=True)
         else:
-            remaining = int(120 - elapsed_time)
+            remaining = int(180 - elapsed_time)
             st.info(f"⏱️ Please wait {remaining} seconds before continuing to the survey.")
     
     elif st.session_state.get("feedback_submitted", False):
@@ -1602,7 +1597,7 @@ if os.getenv('HICXAI_DEBUG_MODE', 'false').lower() == 'true':
 if st.session_state.get("return_raw"):
     elapsed_time = time.time() - st.session_state.get("start_time", time.time())
     
-    if elapsed_time >= 60:  # 1 minute = 60 seconds
+    if elapsed_time >= 180:  # 3 minutes = 180 seconds
         st.markdown("---")
         col_a, col_b = st.columns([3, 1])
         with col_a:
@@ -1615,7 +1610,7 @@ if st.session_state.get("return_raw"):
     else:
         # Show countdown until button appears
         st.markdown("---")
-        wait_time = int(60 - elapsed_time)
+        wait_time = int(180 - elapsed_time)
         m, s = divmod(wait_time, 60)
         remaining_deadline = max(0, int(st.session_state.deadline_ts - time.time()))
         md, sd = divmod(remaining_deadline, 60)
