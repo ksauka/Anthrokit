@@ -21,11 +21,6 @@ from typing import Dict, Any, Optional
 from anthrokit.scaffolds import (
     greet,
     ask_info,
-    decide,
-    explain_factors,
-    explain_counterfactual,
-    close_conversation,
-    disclosure_statement,
 )
 
 # Import AnthroKit stylizer for personality-driven prompt generation
@@ -415,11 +410,9 @@ def build_explanation_prompt(
 ) -> str:
     """Build system prompt for ML explanation generation (SHAP, DiCE, etc.).
     
-    Uses scaffolds (explain_factors, explain_counterfactual) + loan domain context.
-    
     Generates prompts for explaining model decisions using different XAI methods:
-    - "shap": Feature importance explanations (uses explain_factors scaffold)
-    - "dice": Counterfactual explanations (uses explain_counterfactual scaffold)
+    - "shap": Feature importance explanations
+    - "dice": Counterfactual explanations
     - Other types for future expansion
     
     Args:

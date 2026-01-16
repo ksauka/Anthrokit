@@ -52,9 +52,9 @@ class AnthroKitConfig:
             Path to config file if found, None otherwise.
         """
         search_paths = [
-            Path(__file__).parent / "anthrokit.yaml",  # Package directory
-            Path.cwd() / "anthrokit.yaml",  # Current working directory
-            Path.cwd().parent / "anthrokit.yaml",  # Parent directory
+            Path(__file__).parent / "anthrokit.yaml",  
+            Path.cwd() / "anthrokit.yaml",  
+            Path.cwd().parent / "anthrokit.yaml",  
         ]
         
         for path in search_paths:
@@ -153,10 +153,7 @@ def load_preset(preset_name: str, config_path: Optional[Path] = None) -> Dict[st
     Returns:
         Dictionary of preset token values
         
-    Example:
-        >>> preset = load_preset("HighA")
-        >>> print(preset["warmth"])
-        0.7
+
     """
     config = load_config(config_path)
     return config.get_preset(preset_name)

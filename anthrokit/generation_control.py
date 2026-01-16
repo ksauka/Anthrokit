@@ -137,17 +137,7 @@ def generate_with_control(
     
     Returns:
         Tuple of (response_text, generation_metadata)
-        
-    Example:
-        >>> validators = [check_no_guarantees, check_policy_compliance]
-        >>> response, metadata = generate_with_control(
-        ...     prompt=system_prompt,
-        ...     user_input="I need a loan",
-        ...     final_tone_config={"warmth": 0.85, "empathy": 0.72},
-        ...     validators=validators
-        ... )
-        >>> print(metadata["validation_results"])
-        {'check_no_guarantees': True, 'check_policy_compliance': True}
+   
     """
     # Set API key if provided
     if openai_api_key:
@@ -314,72 +304,4 @@ def check_response_length(min_words: int = 10, max_words: int = 200):
     return validator
 
 
-# ============================================================================
-# Phase 2 Functions (Future Implementation)
-# ============================================================================
-# These are stubs for Phase 2 - not implemented yet.
 
-def score_tone_match(candidate: str, target_config: Dict[str, float]) -> float:
-    """
-    Phase 2: Score how well candidate matches target tone.
-    
-    NOT IMPLEMENTED - Future work.
-    
-    Would extract linguistic features from candidate and compare to
-    target_config values for warmth, empathy, formality, etc.
-    
-    Args:
-        candidate: Generated response text
-        target_config: Target tone parameters
-    
-    Returns:
-        Score from 0.0 to 1.0 (higher = better match)
-    """
-    raise NotImplementedError("Phase 2 feature - tone scoring not yet implemented")
-
-
-def score_fidelity(candidate: str, validators: List[Callable]) -> float:
-    """
-    Phase 2: Score fidelity to domain requirements.
-    
-    NOT IMPLEMENTED - Future work.
-    
-    Would run all validators and compute aggregate fidelity score.
-    
-    Args:
-        candidate: Generated response text
-        validators: List of validation functions
-    
-    Returns:
-        Score from 0.0 to 1.0 (higher = more compliant)
-    """
-    raise NotImplementedError("Phase 2 feature - fidelity scoring not yet implemented")
-
-
-def generate_k_best(
-    prompt: str,
-    user_input: str,
-    final_tone_config: Dict[str, float],
-    k: int = 5,
-    validators: Optional[List[Callable]] = None,
-    **kwargs
-) -> Tuple[str, Dict[str, Any]]:
-    """
-    Phase 2: Generate K candidates, score, and select best.
-    
-    NOT IMPLEMENTED - Future work.
-    
-    Would generate multiple candidates, score each for tone match
-    and fidelity, then select the best one.
-    
-    Args:
-        prompt: System prompt
-        user_input: User message
-        final_tone_config: Target tone parameters
-        k: Number of candidates to generate
-        validators: Domain validation functions
-    
-    Returns:
-        Tuple of (best_response, metadata_with_all_scores)
-    """
-    raise NotImplementedError("Phase 2 feature - K-best generation not yet implemented")

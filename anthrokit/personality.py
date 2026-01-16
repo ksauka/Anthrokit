@@ -221,10 +221,7 @@ def map_traits_to_token_adjustments(
     Returns:
         Token adjustment deltas (-0.3 to +0.3 for numeric tokens)
         
-    Example:
-        >>> personality = {'extraversion': 6.5, 'agreeableness': 5.5, ...}
-        >>> adjustments = map_traits_to_token_adjustments(personality)
-        >>> # {'warmth': +0.24, 'empathy': +0.15, 'formality': -0.12, ...}
+
     """
     # Center around midpoint (4 on 1-7 scale)
     centered = {
@@ -317,14 +314,6 @@ def apply_personality_to_preset(
     return personalized
 
 
-# REMOVED: predict_preferred_anthropomorphism()
-# This function used a different formula and is not part of the validated framework.
-# Use apply_personality_to_preset() with map_traits_to_token_adjustments() instead.
-# 
-# Framework Paper uses:
-#   centered = (score - 4.0) / 3.0
-#   warmth_delta = 0.6×extraversion + 0.4×agreeableness
-#   adjusted = base_preset + deltas (clamped to [0.0, 1.0])
 
 
 __all__ = [
