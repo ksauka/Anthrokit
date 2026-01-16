@@ -1,24 +1,11 @@
 """
 A/B Testing Configuration for AnthroKit
 This module configures experimental conditions for the live study.
+It reads factor levels from environment variables or command-line arguments,
+and sets up the AnthroKit preset accordingly.
 
-Experiment factors (3 × 2):
-- Explanation type: none | counterfactual | feature_importance
-- Anthropomorphism: low | high
 
-Backwards compatibility:
-- ANTHROKIT_VERSION = v0 | v1 still works
-  v0 -> explanation=none, anthropomorphism=low
-  v1 -> explanation=feature_importance, anthropomorphism=high
 
-Environment variables (preferred) or CLI flags:
-- ANTHROKIT_EXPLANATION = none | counterfactual | feature_importance
-- ANTHROKIT_ANTHRO      = low | high
-- ANTHROKIT_VERSION     = v0 | v1  (legacy)
-CLI flags:
-  --explanation=none|counterfactual|feature_importance
-  --anthro=low|high
-  --ANTHROKIT_VERSION=v0|v1 or --v0 / --v1 or --ab=v0|v1
 """
 
 import os
@@ -229,6 +216,7 @@ class AppConfig:
             self.formality = 0.55
             self.empathy = 0.55
             self.self_reference = "I"
+            self.hedging = 0.45
         elif self.anthro == "none":
             # NoA fallback (zero anthropomorphism)
             self.emoji_style = "none"
@@ -238,6 +226,7 @@ class AppConfig:
             self.formality = 0.85
             self.empathy = 0.0
             self.self_reference = "none"
+            self.hedging = 0.20
         else:
             # LowA fallback (low anthropomorphism)
             self.emoji_style = "none"
@@ -247,6 +236,7 @@ class AppConfig:
             self.formality = 0.7
             self.empathy = 0.15
             self.self_reference = "none"
+            self.hedging = 0.35
         
         # CRITICAL: Set final_tone_config for natural_conversation.py
         self.final_tone_config = {
@@ -257,7 +247,7 @@ class AppConfig:
             "formality": self.formality,
             "empathy": self.empathy,
             "self_reference": self.self_reference,
-            "hedging": 0.45
+            "hedging": self.hedging  # Use the hedging value set above, not hardcoded
         }
         
         # Set empty personality tracking
