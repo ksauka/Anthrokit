@@ -79,10 +79,16 @@ def download_model_from_dropbox(model_name: str, model_dir: str) -> str:
     """
     model_path = os.path.join(model_dir, model_name)
     
-    # If model exists locally, return path
+    # If model exists locally and is valid, return path
     if os.path.exists(model_path):
-        print(f"✅ Model found locally: {model_path}")
-        return model_path
+        # Check if file is valid (not corrupted/empty)
+        file_size = os.path.getsize(model_path)
+        if file_size > 1000:  # At least 1KB
+            print(f"✅ Model found locally: {model_path} ({file_size / 1024 / 1024:.1f} MB)")
+            return model_path
+        else:
+            print(f"⚠️ Local model corrupted or empty ({file_size} bytes), re-downloading...")
+            os.remove(model_path)
     
     # Download from Dropbox
     print(f"⬇️ Downloading {model_name} from Dropbox...")
