@@ -121,21 +121,18 @@ def _load_or_train_model():
     """Load or train the classifier model (cached across all users).
     
     Uses @st.cache_resource to cache the trained model in memory.
-    Only trains once per deployment, shared across all user sessions.
+    Downloads from Dropbox if not found locally.
+    Only trains once per deployment if download fails, shared across all user sessions.
     """
-    model_dir = os.path.join(os.path.dirname(__file__), '..', 'models')
-    os.makedirs(model_dir, exist_ok=True)
-    model_path = os.path.join(model_dir, 'RandomForest.pkl')
-    
-    if os.path.exists(model_path):
-        try:
-            print(f"✅ Loading pre-trained model from {model_path}")
-            with open(model_path, 'rb') as f:
-                model = pickle.load(f)
-            print(f"✅ Model loaded successfully ({model.n_estimators} trees)")
-            return model
-        except Exception as e:
-            print(f"⚠️ Failed to load model ({e}). Training new model...")
+    # Try to load from local or Dropbox
+    try:
+        from model_loader import load_model
+        print("🔄 Loading model (local or Dropbox)...")
+        model = load_model("RandomForest.pkl")
+        print(f"✅ Model loaded successfully ({model.n_estimators} trees)")
+        return model
+    except Exception as e:
+        print(f"⚠️ Failed to load model from Dropbox ({e}). Training new model...")
     
     # Train new model (200 trees for optimal accuracy)
     print("🔄 Training new RandomForest model (200 trees)...")

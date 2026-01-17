@@ -1,6 +1,9 @@
 # AnthroKit Package Dependencies
 pyyaml>=6.0.0
 
+# Cloud Storage
+dropbox>=11.36.0
+
 # XAIagent Application Dependencies
 streamlit>=1.31.0
 pandas>=2.2.0
