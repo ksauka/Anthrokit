@@ -260,6 +260,7 @@ if not st.session_state.get("prolific_pid"):
     if st.session_state.get("return_raw"):
         st.warning("⚠️ No participant ID detected. Please enter manually:")
     else:
+        st.info("✅ Study environment ready. Please enter your Prolific ID to begin.")
         st.markdown("### 📋 Study Participation")
         st.markdown("""
         Welcome! To participate in this study, please enter your **Prolific ID**.
