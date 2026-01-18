@@ -304,6 +304,11 @@ def explain_with_shap(agent, question_id=None):
             if feature in ['fnlwgt', 'education_num']:  # fnlwgt is census weight, education_num is redundant
                 continue
             
+            # ETHICAL FILTER: Skip sensitive demographic features (treated as silent)
+            # These features use default values and should not appear in explanations
+            if any(feature.startswith(prefix) for prefix in ['race_', 'sex_', 'native_country_']) or feature in ['race', 'sex', 'native_country']:
+                continue
+            
             # Check if this is a one-hot encoded feature (e.g., workclass_Private)
             categorical_prefixes = ['workclass_', 'education_', 'marital_status_', 'occupation_', 
                                    'relationship_', 'race_', 'sex_', 'native_country_']

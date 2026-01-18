@@ -71,6 +71,14 @@ def preprocess_adult(df: pd.DataFrame) -> pd.DataFrame:
         else:
             df[c] = df[c].fillna('Unknown')
 
+    # ETHICAL AI: Drop sensitive demographic features BEFORE one-hot encoding
+    # These features are not collected from users and should not influence the model
+    sensitive_features = ['race', 'sex', 'native_country']
+    dropped_features = [col for col in sensitive_features if col in df.columns]
+    df = df.drop(columns=dropped_features)
+    if dropped_features:
+        print(f"[Preprocessing] Dropped sensitive features: {dropped_features}")
+
     # One-hot encode categorical features except the target
     cat_cols = [c for c in df.columns if df[c].dtype == 'object' and c != 'income']
     df_encoded = pd.get_dummies(df, columns=cat_cols, drop_first=True)

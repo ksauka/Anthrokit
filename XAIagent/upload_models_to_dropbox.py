@@ -10,6 +10,14 @@ from model_loader import upload_model_to_dropbox, _get_dropbox_client
 
 def main():
     """Upload all model files to Dropbox."""
+    # Load token from secrets.toml
+    secrets_path = os.path.join(os.path.dirname(__file__), '.streamlit', 'secrets.toml')
+    if os.path.exists(secrets_path):
+        import toml
+        secrets = toml.load(secrets_path)
+        os.environ['DROPBOX_ACCESS_TOKEN'] = secrets.get('DROPBOX_ACCESS_TOKEN', '')
+        print(f"✓ Loaded Dropbox token from {secrets_path}")
+    
     models_dir = os.path.join(os.path.dirname(__file__), 'models')
     
     # Test Dropbox connection

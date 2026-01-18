@@ -21,6 +21,8 @@ def train_and_evaluate(X, y, model, model_name, models_dir):
     joblib.dump(model, os.path.join(models_dir, f'{model_name}.pkl'))
 
 if __name__ == '__main__':
+    print("[Training] Starting model training WITHOUT sensitive demographic features (race, sex, native_country)")
+    print("[Training] This ensures ethical AI by removing discriminatory features from the model")
     data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
     models_dir = os.path.join(os.path.dirname(__file__), '..', 'models')
     os.makedirs(models_dir, exist_ok=True)
@@ -28,6 +30,9 @@ if __name__ == '__main__':
     df_clean = preprocess_adult(df)
     X = df_clean.drop('income', axis=1)
     y = df_clean['income']
+    
+    print(f"[Training] Features used: {list(X.columns)}")
+    print(f"[Training] Total features: {len(X.columns)}")
 
     classifiers = [
         (RandomForestClassifier(n_estimators=100, random_state=42), 'RandomForest'),

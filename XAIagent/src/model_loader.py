@@ -26,22 +26,49 @@ DROPBOX_MODEL_FOLDER = "/anthrokit_models"
 def _get_dropbox_client():
     """Get authenticated Dropbox client.
     
-    Reads DROPBOX_ACCESS_TOKEN from environment or Streamlit secrets.
+    Reads DROPBOX credentials from environment or Streamlit secrets.
+    Supports both refresh tokens (recommended) and access tokens.
     
     Returns:
         Dropbox client instance
         
     Raises:
-        ValueError if no access token found
+        ValueError if no credentials found
         AuthError if authentication fails
     """
     if not DROPBOX_AVAILABLE:
         raise ImportError("Dropbox SDK not installed")
     
-    # Try environment variable first
-    access_token = os.getenv("DROPBOX_ACCESS_TOKEN")
+    # Try refresh token first (long-lived, recommended)
+    app_key = os.getenv("DROPBOX_APP_KEY")
+    app_secret = os.getenv("DROPBOX_APP_SECRET")
+    refresh_token = os.getenv("DROPBOX_REFRESH_TOKEN")
     
     # Try Streamlit secrets
+    if not all([app_key, app_secret, refresh_token]):
+        try:
+            app_key = app_key or st.secrets.get("DROPBOX_APP_KEY")
+            app_secret = app_secret or st.secrets.get("DROPBOX_APP_SECRET")
+            refresh_token = refresh_token or st.secrets.get("DROPBOX_REFRESH_TOKEN")
+        except Exception:
+            pass
+    
+    # If we have refresh token credentials, use them (recommended)
+    if app_key and app_secret and refresh_token:
+        try:
+            dbx = dropbox.Dropbox(
+                app_key=app_key,
+                app_secret=app_secret,
+                oauth2_refresh_token=refresh_token
+            )
+            # Test authentication
+            dbx.users_get_current_account()
+            return dbx
+        except AuthError as e:
+            raise ValueError(f"Invalid Dropbox refresh token: {e}")
+    
+    # Fallback to access token (short-lived, expires after 4 hours)
+    access_token = os.getenv("DROPBOX_ACCESS_TOKEN")
     if not access_token:
         try:
             access_token = st.secrets.get("DROPBOX_ACCESS_TOKEN")
@@ -50,11 +77,14 @@ def _get_dropbox_client():
     
     if not access_token:
         raise ValueError(
-            "DROPBOX_ACCESS_TOKEN not found. Set it in:\n"
-            "1. Environment variable: export DROPBOX_ACCESS_TOKEN='your_token'\n"
-            "2. Streamlit secrets: .streamlit/secrets.toml\n\n"
-            "Get your token at: https://www.dropbox.com/developers/apps\n"
-            "Create app → Generate access token"
+            "DROPBOX credentials not found. Set in .streamlit/secrets.toml:\n"
+            "Recommended (never expires):\n"
+            "  DROPBOX_APP_KEY = 'your_app_key'\n"
+            "  DROPBOX_APP_SECRET = 'your_app_secret'\n"
+            "  DROPBOX_REFRESH_TOKEN = 'your_refresh_token'\n\n"
+            "Or use short-lived access token (expires after 4 hours):\n"
+            "  DROPBOX_ACCESS_TOKEN = 'your_token'\n\n"
+            "Get credentials at: https://www.dropbox.com/developers/apps"
         )
     
     try:
@@ -63,7 +93,7 @@ def _get_dropbox_client():
         dbx.users_get_current_account()
         return dbx
     except AuthError as e:
-        raise AuthError(f"Invalid Dropbox access token: {e}")
+        raise ValueError(f"Invalid Dropbox access token: {e}")
 
 
 @st.cache_resource

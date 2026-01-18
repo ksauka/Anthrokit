@@ -55,9 +55,10 @@ class LoanApplication:
     capital_loss: Optional[int] = None
     
     # Demographics
-    race: Optional[str] = None
-    sex: Optional[str] = None
-    native_country: Optional[str] = None
+    # Ethical defaults - not collected from users to avoid discrimination concerns
+    race: Optional[str] = 'White'  # Default value - not used in explanations
+    sex: Optional[str] = 'Male'  # Default value - not used in explanations
+    native_country: Optional[str] = 'United-States'  # Default value - not used in explanations
     relationship: Optional[str] = None
     
     # Application metadata
@@ -116,10 +117,11 @@ class LoanAssistant:
         }
         
         # Field collection order and prompts
+        # Note: race, sex, native_country excluded from collection for ethical reasons
+        # These will use default values and won't appear in explanations
         self.field_order = [
             'age', 'workclass', 'education', 'marital_status', 
-            'occupation', 'hours_per_week', 'sex', 'race',
-            'native_country', 'relationship', 'capital_gain', 'capital_loss'
+            'occupation', 'hours_per_week', 'relationship', 'capital_gain', 'capital_loss'
         ]
         
         self.field_prompts = {
@@ -238,13 +240,16 @@ class LoanAssistant:
             # High anthropomorphism: Warm, personal, conversational
             if any(keyword in user_input.lower() for keyword in greeting_keywords) or user_input.lower() in ['yes', 'y']:
                 self.conversation_state = ConversationState.COLLECTING_INFO
-                base_greeting = ("Welcome! This is Luna, your loan application assistant. 😊 I will process your information and provide you with your loan qualification results. If you have any questions about the results, feel free to ask!\n\n"
-                       "**I will collect 10 pieces of information, one at a time:**\n"
-                       "• Personal details (age, gender)\n"
+                base_greeting = ("Welcome! This is Luna, your loan application assistant. 😊\n\n"
+                       "📋 **Research Note:** This is a study about AI explanation systems, not actual loan predictions. "
+                       "We've removed demographic data (race, gender, nationality) from our AI model to ensure fair, "
+                       "non-discriminatory predictions focused solely on financial and professional qualifications.\n\n"
+                       "**I will collect 9 pieces of information, one at a time:**\n"
+                       "• Personal details (age)\n"
                        "• Employment information (work type, occupation, hours)\n"
                        "• Education level\n"
                        "• Financial details (capital gains/losses)\n"
-                       "• Background information\n\n"
+                       "• Background information (marital status, relationship)\n\n"
                        "Let's start with the first question:")
                 
                 # Enhance greeting with LLM
@@ -258,13 +263,16 @@ class LoanAssistant:
                 
                 return f"{base_greeting}\n\n{self._get_next_question()}"
             else:
-                base_prompt = ("Hello! This is Luna, your loan application assistant. 😊 I will process your information and provide you with your loan qualification results. If you have any questions about the results, feel free to ask!\n\n"
-                       "**I will collect 10 pieces of information, one at a time:**\n"
-                       "• Personal details (age, gender)\n"
+                base_prompt = ("Hello! This is Luna, your loan application assistant. 😊\n\n"
+                       "📋 **Research Note:** This is a study about AI explanation systems, not actual loan predictions. "
+                       "We've removed demographic data (race, gender, nationality) from our AI model to ensure fair, "
+                       "non-discriminatory predictions focused solely on financial and professional qualifications.\n\n"
+                       "**I will collect 9 pieces of information, one at a time:**\n"
+                       "• Personal details (age)\n"
                        "• Employment information (work type, occupation, hours)\n"
                        "• Education level\n"
                        "• Financial details (capital gains/losses)\n"
-                       "• Background information\n\n"
+                       "• Background information (marital status, relationship)\n\n"
                        "Would you like to start your loan application? Just say 'yes' or 'start' to begin!")
                 
                 # Enhance with LLM
@@ -281,9 +289,12 @@ class LoanAssistant:
             # Low anthropomorphism: Technical, concise, machine-like
             if any(keyword in user_input.lower() for keyword in greeting_keywords) or user_input.lower() in ['yes', 'y']:
                 self.conversation_state = ConversationState.COLLECTING_INFO
-                base_greeting = ("Welcome. This is the Loan Assistant for credit pre-assessment. Please provide the requested information to proceed with your evaluation.\n\n"
-                       "**Information collection process (10 data points):**\n"
-                       "• Personal data (age, gender)\n"
+                base_greeting = ("Welcome. This is the Loan Assistant for credit pre-assessment.\n\n"
+                       "**Research Disclaimer:** This system is designed for studying AI explanation methods, not real loan decisions. "
+                       "Demographic attributes (race, gender, nationality) have been excluded from the model to prevent discriminatory outcomes. "
+                       "Assessment is based exclusively on economic and professional factors.\n\n"
+                       "**Information collection process (9 data points):**\n"
+                       "• Personal data (age)\n"
                        "• Employment data (work type, occupation, hours)\n"
                        "• Education level\n"
                        "• Financial data (capital gains/losses)\n"
@@ -301,9 +312,12 @@ class LoanAssistant:
                 
                 return f"{base_greeting}\n\n{self._get_next_question()}"
             else:
-                base_prompt = ("This is the Loan Assistant for credit pre-assessment. Please provide the requested information to proceed with your evaluation.\n\n"
-                       "**Data collection process (10 data points):**\n"
-                       "• Personal data (age, gender)\n"
+                base_prompt = ("This is the Loan Assistant for credit pre-assessment.\n\n"
+                       "**Research Disclaimer:** This system is designed for studying AI explanation methods, not real loan decisions. "
+                       "Demographic attributes (race, gender, nationality) have been excluded from the model to prevent discriminatory outcomes. "
+                       "Assessment is based exclusively on economic and professional factors.\n\n"
+                       "**Data collection process (9 data points):**\n"
+                       "• Personal data (age)\n"
                        "• Employment data (work type, occupation, hours)\n"
                        "• Education level\n"
                        "• Financial data (capital gains/losses)\n"
