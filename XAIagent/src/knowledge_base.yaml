@@ -208,3 +208,75 @@ why_questions:
   why_country: "Country of origin correlates with immigration patterns, education levels, and occupation types that affect income predictions."
   why_race: "Race reflects historical income inequality patterns in the census data. We include it for transparency but acknowledge it should not be a decision factor."
   why_sex: "Gender reflects the pay gap present in historical data. Like race, we include it for transparency but it should not be used for real decisions."
+
+system_capabilities: |
+  **What I Can Do For You:**
+  
+  **1. Income Assessment** (Main Purpose)
+  - Collect your information through conversational form
+  - Predict whether your income is likely above or below $50K/year
+  - Provide probability estimates (confidence level)
+  
+  **2. Explain Predictions** (After Assessment)
+  - Show SHAP values: which features helped/hurt your prediction
+  - Explain feature importance: "Which factors were most important?"
+  - Interpret your results: "Why was I predicted this way?"
+  
+  **3. What-If Analysis** (Explore Scenarios)
+  - Answer counterfactual questions: "What if I had a Master's degree?"
+  - Show how changes would affect your prediction
+  - Help identify which improvements would matter most
+  
+  **4. Answer Questions** (Anytime)
+  - Explain features: "What is occupation?" or "Why do you need my education?"
+  - Interpret SHAP: "What does a SHAP value mean?" or "What does -1.5 pts mean?"
+  - Dataset info: "Tell me about the dataset"
+  - Model details: "How does the model work?"
+  
+  **5. Navigation**
+  - Check progress: "review" or "status"
+  - Start over: "restart" or "new assessment"
+  - Get help: "help" or "what can you do?"
+  
+  **What I CAN'T Do:**
+  - Make real loan decisions (this is research only)
+  - Access external data or your actual financial records
+  - Provide financial advice or legal guidance
+  - Update my training (I use 1994 census data)
+
+shap_value_interpretation: |
+  **Understanding SHAP Points (e.g., "Executive/Manager: -1.5 pts")**
+  
+  **What the number means:**
+  - The number (like -1.5) shows how much that feature pushed your prediction
+  - **Negative numbers** (e.g., -1.5): Pushed TOWARD lower income prediction (hurt your score)
+  - **Positive numbers** (e.g., +2.0): Pushed TOWARD higher income prediction (helped your score)
+  - **Zero or near zero** (e.g., 0.1): Had minimal impact
+  
+  **Magnitude guide:**
+  - **0.0 to 0.5**: Small impact (minor factor)
+  - **0.5 to 1.5**: Moderate impact (noticeable factor)
+  - **1.5 to 3.0**: Large impact (major factor)
+  - **3.0+**: Very large impact (dominant factor)
+  
+  **Example: "Executive/Manager: -1.5 pts"**
+  
+  This means:
+  - Your occupation (Executive/Manager) had a LARGE impact on your prediction
+  - It pushed your prediction DOWN by 1.5 points (toward lower income)
+  - This might seem counterintuitive since executives usually earn well
+  - However, the model compares you to TYPICAL executives in the training data
+  - If you're younger, work fewer hours, or have different education than typical executives, the model sees a mismatch
+  
+  **Why might a "good" occupation hurt your score?**
+  
+  SHAP values are not about whether something is "good" or "bad" in isolation. They compare YOUR VALUE to what's TYPICAL for people with similar outcomes. For example:
+  - If you're 25 years old with an executive title but only work 30 hours/week with a high school diploma
+  - The model knows most executives are 45+, work 50+ hours, with Bachelor's degrees
+  - Your occupation creates an EXPECTATION that you don't meet in other features
+  - So it actually LOWERS your predicted income because you're atypical
+  
+  **Think of it this way:**
+  - SHAP = "Given everything else about you, does THIS feature push you toward higher or lower income?"
+  - It's not "Is this feature generally good or bad?"
+  - It's "Does your SPECIFIC value for this feature fit the pattern for high earners?"

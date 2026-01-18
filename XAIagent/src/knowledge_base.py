@@ -64,7 +64,9 @@ def get_intent_type(user_input: str) -> str:
     # Help questions about system, features, SHAP
     help_keywords = ['what is', 'what does', 'what are', 'tell me about', 
                     'what mean', 'how to read', 'how to interpret',
-                    'what shap', 'explain shap', 'dataset', 'how does the model']
+                    'what shap', 'explain shap', 'dataset', 'how does the model',
+                    'what can you', 'what else', 'what do you do', 'capabilities',
+                    'this mean', 'does this mean', 'mean by']
     if any(keyword in user_lower for keyword in help_keywords):
         return 'help_question'
     
@@ -125,6 +127,21 @@ def search_knowledge_base(query: str, top_k: int = 3) -> str:
     
     query_lower = query.lower()
     results = []
+    
+    # Check for capability/system questions
+    capability_keywords = ['what can you', 'what else', 'what do you do', 'capabilities', 
+                          'what are you', 'help me understand', 'what should i']
+    if any(kw in query_lower for kw in capability_keywords):
+        results.append(("System Capabilities", KNOWLEDGE_BASE.get("system_capabilities", "")))
+    
+    # Check for SHAP value interpretation (specific numbers/points)
+    shap_value_keywords = ['what does this mean', 'mean by', 'pts mean', 'points mean',
+                          '-', 'negative', 'positive', '+', 'shap value']
+    if any(kw in query_lower for kw in shap_value_keywords):
+        # Add specific SHAP value interpretation first
+        results.append(("Understanding SHAP Points", KNOWLEDGE_BASE.get("shap_value_interpretation", "")))
+        # Then add general SHAP explanation
+        results.append(("SHAP Explanation", KNOWLEDGE_BASE.get("shap_explanation", "")))
     
     # Check for dataset questions
     dataset_keywords = ['dataset', 'data', 'census', 'adult income', 'training data', 'where', 'source']

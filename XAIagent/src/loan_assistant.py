@@ -481,6 +481,11 @@ class LoanAssistant:
         """Handle interactions when application is complete"""
         user_lower = user_input.lower()
         
+        # Check for help questions first (what does this mean, tell me about, etc.)
+        intent = get_intent_type(user_input)
+        if intent == 'help_question':
+            return self._handle_knowledge_question(user_input)
+        
         if user_lower in ['new', 'another', 'restart', 'again', 'start over']:
             return self._restart_application()
         elif self._is_xai_query(user_input):
@@ -1851,6 +1856,7 @@ class LoanAssistant:
         - "Why do you need my education?"
         - "What does a SHAP value mean?"
         - "Tell me about the dataset"
+        - "What does this mean?" (contextual - refers to recent SHAP results)
         """
         if not KNOWLEDGE_BASE_AVAILABLE:
             return "I apologize, but I cannot access detailed help information at the moment."
@@ -1860,17 +1866,39 @@ class LoanAssistant:
             import anthrokit.prompts
             from ab_config import config
             
-            # Retrieve relevant knowledge
+            # Retrieve relevant knowledge from knowledge base
             knowledge_context = search_knowledge_base(user_question, top_k=3)
             
-            # Build help prompt with personality
+            # ADD CONTEXT: If user just got prediction, include their actual results
+            contextual_info = ""
+            if self.application.loan_approved is not None:
+                # They have a prediction - add prediction context
+                result = "approved (>50K income)" if self.application.loan_approved else "denied (≤50K income)"
+                contextual_info += f"\n\n**Your Recent Prediction:** {result}\n"
+                
+                # If they have SHAP results, include top factors
+                if hasattr(self, 'last_shap_result') and self.last_shap_result:
+                    shap_data = self.last_shap_result
+                    if 'feature_importance' in shap_data:
+                        contextual_info += "\n**Your Top Contributing Factors:**\n"
+                        for feat_name, value, contrib in shap_data['feature_importance'][:5]:
+                            sign = "+" if contrib > 0 else ""
+                            contextual_info += f"- {feat_name}: {sign}{contrib:.2f} pts (Value: {value})\n"
+                        contextual_info += "\n*This is what you're seeing in your results.*\n"
+            
+            # Combine knowledge base with user's specific context
+            full_context = knowledge_context
+            if contextual_info:
+                full_context = f"{contextual_info}\n\n---\n\n{knowledge_context}"
+            
+            # Build help prompt with personality (bounded to domain)
             system_prompt = anthrokit.prompts.build_help_prompt(
                 preset=config.final_tone_config,
                 user_question=user_question,
-                knowledge_context=knowledge_context
+                knowledge_context=full_context
             )
             
-            # Generate response using LLM
+            # Generate response using LLM (bounded to provided knowledge + user context)
             if NATURAL_CONVERSATION_AVAILABLE:
                 from natural_conversation import generate_llm_response
                 
@@ -1885,13 +1913,13 @@ class LoanAssistant:
                     messages,
                     model=getattr(config, 'model', 'gpt-4o-mini'),
                     temperature=temperature,
-                    max_tokens=500
+                    max_tokens=600  # Increased for contextual answers
                 )
                 
                 return response if response else "I couldn't generate a response. Please try asking your question differently."
             else:
                 # Fallback: return knowledge directly without LLM enhancement
-                return f"Here's what I found:\n\n{knowledge_context}\n\nDoes this answer your question?"
+                return f"Here's what I found:\n\n{full_context}\n\nDoes this answer your question?"
                 
         except Exception as e:
             print(f"Error handling knowledge question: {e}")
