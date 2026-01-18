@@ -240,10 +240,11 @@ class LoanAssistant:
             # High anthropomorphism: Warm, personal, conversational
             if any(keyword in user_input.lower() for keyword in greeting_keywords) or user_input.lower() in ['yes', 'y']:
                 self.conversation_state = ConversationState.COLLECTING_INFO
-                base_greeting = ("Welcome! This is Luna, your loan application assistant. 😊\n\n"
-                       "📋 **Research Note:** This is a study about AI explanation systems, not actual loan predictions. "
-                       "We've removed demographic data (race, gender, nationality) from our AI model to ensure fair, "
-                       "non-discriminatory predictions focused solely on financial and professional qualifications.\n\n"
+                base_greeting = ("Welcome! This is Luna, your loan pre-assessment assistant. 😊\n\n"
+                       "📋 **Research Note:** This is a study about AI explanation systems using the Adult Income dataset. "
+                       "I'll predict whether your income is above or below $50K as a proxy for loan eligibility. "
+                       "To ensure fairness, we've excluded demographic data (race, gender, nationality) from our AI model, "
+                       "focusing only on financial and professional qualifications.\n\n"
                        "**I will collect 9 pieces of information, one at a time:**\n"
                        "• Personal details (age)\n"
                        "• Employment information (work type, occupation, hours)\n"
@@ -263,17 +264,18 @@ class LoanAssistant:
                 
                 return f"{base_greeting}\n\n{self._get_next_question()}"
             else:
-                base_prompt = ("Hello! This is Luna, your loan application assistant. 😊\n\n"
-                       "📋 **Research Note:** This is a study about AI explanation systems, not actual loan predictions. "
-                       "We've removed demographic data (race, gender, nationality) from our AI model to ensure fair, "
-                       "non-discriminatory predictions focused solely on financial and professional qualifications.\n\n"
+                base_prompt = ("Hello! This is Luna, your loan pre-assessment assistant. 😊\n\n"
+                       "📋 **Research Note:** This is a study about AI explanation systems using the Adult Income dataset. "
+                       "I'll predict whether your income is above or below $50K as a proxy for loan eligibility. "
+                       "To ensure fairness, we've excluded demographic data (race, gender, nationality) from our AI model, "
+                       "focusing only on financial and professional qualifications.\n\n"
                        "**I will collect 9 pieces of information, one at a time:**\n"
                        "• Personal details (age)\n"
                        "• Employment information (work type, occupation, hours)\n"
                        "• Education level\n"
                        "• Financial details (capital gains/losses)\n"
                        "• Background information (marital status, relationship)\n\n"
-                       "Would you like to start your loan application? Just say 'yes' or 'start' to begin!")
+                       "Would you like to start your loan pre-assessment? Just say 'yes' or 'start' to begin!")
                 
                 # Enhance with LLM
                 if NATURAL_CONVERSATION_AVAILABLE:
@@ -289,16 +291,17 @@ class LoanAssistant:
             # Low anthropomorphism: Technical, concise, machine-like
             if any(keyword in user_input.lower() for keyword in greeting_keywords) or user_input.lower() in ['yes', 'y']:
                 self.conversation_state = ConversationState.COLLECTING_INFO
-                base_greeting = ("Welcome. This is the Loan Assistant for credit pre-assessment.\n\n"
-                       "**Research Disclaimer:** This system is designed for studying AI explanation methods, not real loan decisions. "
-                       "Demographic attributes (race, gender, nationality) have been excluded from the model to prevent discriminatory outcomes. "
-                       "Assessment is based exclusively on economic and professional factors.\n\n"
+                base_greeting = ("Welcome. This is the Loan Pre-Assessment Agent.\n\n"
+                       "**Research Disclaimer:** This system uses the Adult Income dataset to predict income level (≤$50K or >$50K) "
+                       "as a proxy for loan eligibility. This is a study of AI explanation methods, not actual loan decisions. "
+                       "Demographic attributes (race, gender, nationality) have been excluded to prevent discriminatory outcomes. "
+                       "Assessment is based exclusively on financial and professional factors.\n\n"
                        "**Information collection process (9 data points):**\n"
                        "• Personal data (age)\n"
                        "• Employment data (work type, occupation, hours)\n"
                        "• Education level\n"
                        "• Financial data (capital gains/losses)\n"
-                       "• Demographics & relationship\n\n"
+                       "• Relationship status\n\n"
                        "**First question:**")
                 
                 # Enhance with LLM for professional tone
@@ -312,16 +315,17 @@ class LoanAssistant:
                 
                 return f"{base_greeting}\n\n{self._get_next_question()}"
             else:
-                base_prompt = ("This is the Loan Assistant for credit pre-assessment.\n\n"
-                       "**Research Disclaimer:** This system is designed for studying AI explanation methods, not real loan decisions. "
-                       "Demographic attributes (race, gender, nationality) have been excluded from the model to prevent discriminatory outcomes. "
-                       "Assessment is based exclusively on economic and professional factors.\n\n"
+                base_prompt = ("This is the Loan Pre-Assessment Agent.\n\n"
+                       "**Research Disclaimer:** This system uses the Adult Income dataset to predict income level (≤$50K or >$50K) "
+                       "as a proxy for loan eligibility. This is a study of AI explanation methods, not actual loan decisions. "
+                       "Demographic attributes (race, gender, nationality) have been excluded to prevent discriminatory outcomes. "
+                       "Assessment is based exclusively on financial and professional factors.\n\n"
                        "**Data collection process (9 data points):**\n"
                        "• Personal data (age)\n"
                        "• Employment data (work type, occupation, hours)\n"
                        "• Education level\n"
                        "• Financial data (capital gains/losses)\n"
-                       "• Demographics & relationship\n\n"
+                       "• Relationship status\n\n"
                        "Enter 'yes' or 'start' to begin data collection.")
                 
                 # Enhance with LLM for professional tone
