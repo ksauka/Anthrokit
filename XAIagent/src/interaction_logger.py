@@ -204,10 +204,13 @@ class InteractionLogger:
         if self.current_turn:
             self.session_data["turns"].append(self.current_turn)
             self.session_data["total_turns"] = len(self.session_data["turns"])
+            turn_count = len(self.session_data["turns"])
+            print(f"[InteractionLogger] Turn {turn_count} completed")
             self.current_turn = None
             
             # Auto-save every 5 turns (in case of crash)
-            if len(self.session_data["turns"]) % 5 == 0:
+            if turn_count % 5 == 0:
+                print(f"[InteractionLogger] Triggering backup save at turn {turn_count}")
                 self._save_session(backup=True)
     
     def end_session(self, completion_status: str = "completed"):
@@ -267,6 +270,9 @@ class InteractionLogger:
         if not self.github_token or not self.repo_path:
             print("[InteractionLogger] Warning: GitHub credentials not configured. Skipping save.")
             return
+        
+        log_type = "Backup" if backup else "Final"
+        print(f"[InteractionLogger] Starting {log_type} save...")
             
         suffix = "_backup" if backup else ""
         filename = f"{self.session_id}{suffix}.json"
@@ -310,9 +316,9 @@ class InteractionLogger:
         response = requests.put(api_url, headers=headers, json=commit_data)
         
         if response.status_code in [200, 201]:
-            print(f"[InteractionLogger] ✓ Log saved to GitHub: {file_path}")
+            print(f"[InteractionLogger] ✓ {log_type} log saved to GitHub: {file_path}")
         else:
-            print(f"[InteractionLogger] ✗ Failed to save log: {response.status_code}")
+            print(f"[InteractionLogger] ✗ Failed to save {log_type} log: {response.status_code}")
             print(f"  Error: {response.text[:200]}")
     
     def _get_log_path(self, suffix: str = "") -> str:

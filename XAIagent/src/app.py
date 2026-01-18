@@ -1168,7 +1168,12 @@ if send_button and user_message:
             })
     
     # Handle the message through loan assistant
-    assistant_response = st.session_state.loan_assistant.handle_message(user_message)
+    # Show progress spinner for explanation requests
+    if is_explanation_request:
+        with st.spinner("Generating explanation..."):
+            assistant_response = st.session_state.loan_assistant.handle_message(user_message)
+    else:
+        assistant_response = st.session_state.loan_assistant.handle_message(user_message)
     
     # Check if decision was just provided
     if logger and hasattr(logger, 'log_task_event'):
@@ -1274,7 +1279,8 @@ elif current_state == 'complete':
                     # Track that user triggered "why" explanation
                     if hasattr(logger, 'log_task_event'):
                         logger.log_task_event("why_triggered")
-                response = st.session_state.loan_assistant.handle_message("explain")
+                with st.spinner("Generating explanation..."):
+                    response = st.session_state.loan_assistant.handle_message("explain")
                 # Log the explanation response
                 if logger:
                     logger.log_interaction("assistant_response", {"content": response})
@@ -1298,7 +1304,8 @@ elif current_state == 'complete':
                 # Track that user triggered "why" explanation
                 if hasattr(logger, 'log_task_event'):
                     logger.log_task_event("why_triggered")
-            response = st.session_state.loan_assistant.handle_message("explain")
+            with st.spinner("Generating explanation..."):
+                response = st.session_state.loan_assistant.handle_message("explain")
             # Log the explanation response
             if logger:
                 logger.log_interaction("assistant_response", {"content": response})
