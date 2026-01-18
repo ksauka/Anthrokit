@@ -258,10 +258,10 @@ if "prolific_pid" not in st.session_state:
 if not st.session_state.get("prolific_pid"):
     # Coming from Qualtrics but no pid parameter - show manual input
     if st.session_state.get("return_raw"):
-        st.warning("⚠️ No participant ID detected. Please enter manually:")
+        st.warning("No participant ID detected. Please enter manually:")
     else:
-        st.info("✅ Study environment ready. Please enter your Prolific ID to begin.")
-        st.markdown("### 📋 Study Participation")
+        st.info("Study environment ready. Please enter your Prolific ID to begin.")
+        st.markdown("### Study Participation")
         st.markdown("""
         Welcome! To participate in this study, please enter your **Prolific ID**.
         
@@ -283,7 +283,7 @@ if not st.session_state.get("prolific_pid"):
             st.session_state.prolific_pid = prolific_input.strip()
             st.rerun()
         else:
-            st.error("⚠️ Please enter your Prolific ID to continue.")
+            st.error("Please enter your Prolific ID to continue.")
     
     st.stop()  # Block execution until ID provided
 
@@ -710,9 +710,9 @@ if personality_required:
     
     if not personality:
         # Mandatory personality survey before proceeding
-        st.title("🏦 AI Loan Assistant - Credit Pre-Assessment")
+        st.title("AI Loan Assistant - Credit Pre-Assessment")
         st.markdown("---")
-        st.info("📋 Please complete this brief personality survey to personalize your experience.")
+        st.info("Please complete this brief personality survey to personalize your experience.")
         
         with st.form("personality_form"):
             st.markdown("""### Brief Personality Survey
@@ -766,7 +766,7 @@ Rate yourself on these traits (1 = Disagree strongly, 7 = Agree strongly):""")
                     # CRITICAL: Must have real Prolific ID - no fallback
                     prolific_id = st.session_state.get("prolific_pid")
                     if not prolific_id:
-                        st.error("⚠️ ERROR: No Prolific ID found. Cannot start logging.")
+                        st.error("ERROR: No Prolific ID found. Cannot start logging.")
                         st.stop()
                     
                     logger = st.session_state.interaction_logger
@@ -816,7 +816,7 @@ Rate yourself on these traits (1 = Disagree strongly, 7 = Agree strongly):""")
                     
                     print(f"✅ DEBUG: Logger session started - Prolific ID: {prolific_id}")
                 
-                st.success("✅ Personality profile saved! The assistant will now adapt to your preferences.")
+                st.success("Personality profile saved! The assistant will now adapt to your preferences.")
                 st_rerun()
         
         st.stop()  # Block main app until survey complete
@@ -829,10 +829,7 @@ if 'interaction_logger' in st.session_state and 'logger_session_started' not in 
     # CRITICAL: Must have real Prolific ID - no fallback
     prolific_id = st.session_state.get("prolific_pid")
     if not prolific_id:
-        st.error("⚠️ ERROR: No Prolific ID found. Cannot start logging.")
-        st.stop()
-    
-    logger.participant_id = prolific_id
+                        st.error("ERROR: No Prolific ID found. Cannot start logging.")
     logger.session_data["participant_id"] = prolific_id
     
     # Get tone configuration from config
@@ -885,7 +882,7 @@ if 'loan_assistant' not in st.session_state:
     st.session_state.chat_history = []
 
 # App header
-st.title("🏦 AI Loan Assistant - Credit Pre-Assessment")
+st.title("AI Loan Assistant - Credit Pre-Assessment")
 
 # Assistant Introduction (only for high anthropomorphism)
 if anthro == "high":
@@ -1508,7 +1505,7 @@ if current_state == 'complete' and len(st.session_state.chat_history) > 5:
     if st.session_state.get("feedback_submitted", False) and st.session_state.get("return_raw"):
         # Participant came from Qualtrics - return them to continue survey
         st.markdown("---")
-        st.markdown("### ✅ Interaction Complete!")
+        st.markdown("### Interaction Complete!")
         st.markdown("""
         Thank you for completing the interaction phase! 
         
@@ -1517,16 +1514,16 @@ if current_state == 'complete' and len(st.session_state.chat_history) > 5:
         
         elapsed_time = time.time() - st.session_state.get("start_time", time.time())
         if elapsed_time >= 180:  # 3 minutes minimum engagement
-            if st.button("📋 Continue to Survey", type="primary", width="stretch", key="return_to_qualtrics"):
+            if st.button("Continue to Survey", type="primary", width="stretch", key="return_to_qualtrics"):
                 back_to_survey(done_flag=True)
         else:
             remaining = int(180 - elapsed_time)
-            st.info(f"⏱️ Please wait {remaining} seconds before continuing to the survey.")
+            st.info(f"Please wait {remaining} seconds before continuing to the survey.")
     
     elif st.session_state.get("feedback_submitted", False):
         # No return URL - standalone completion (shouldn't happen in study)
         st.markdown("---")
-        st.success("✅ Thank you for your participation!")
+        st.success("Thank you for your participation!")
         st.markdown("You may close this window.")
 
 # Footer with dataset information
@@ -1605,7 +1602,7 @@ if st.session_state.get("return_raw"):
             m, s = divmod(remaining, 60)
             st.caption(f"⏱️ Up to {m}:{s:02d} remaining. You can return anytime.")
         with col_b:
-            if st.button("✅ Continue to survey", type="primary", width="stretch", key="footer_return"):
+            if st.button("Continue to survey", type="primary", width="stretch", key="footer_return"):
                 back_to_survey()
     else:
         # Show countdown until button appears

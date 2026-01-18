@@ -13,14 +13,15 @@ from typing import Dict, Optional, Any
 
 # Ten-Item Personality Inventory (TIPI)
 # Gosling, S. D., Rentfrow, P. J., & Swann, W. B., Jr. (2003).
+# Format: Each item presents both poles to reduce social desirability bias
 BIG_5_ITEMS = {
     "extraversion": [
         ("Extraverted, enthusiastic", 1),
         ("Reserved, quiet", -1)
     ],
     "agreeableness": [
-        ("Sympathetic, warm", 1),
-        ("Critical, quarrelsome", -1)
+        ("Critical, quarrelsome", -1),
+        ("Sympathetic, warm", 1)
     ],
     "conscientiousness": [
         ("Dependable, self-disciplined", 1),
