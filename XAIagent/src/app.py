@@ -324,9 +324,9 @@ if st.session_state.get("_returned"):
         st.markdown(f'<meta http-equiv="refresh" content="0;url={final}">', unsafe_allow_html=True)
         st.stop()
 
-# set the 3-minute deadline once and track start time
+# set the 3.5-minute deadline once and track start time
 if "deadline_ts" not in st.session_state:
-    st.session_state.deadline_ts = time.time() + 180
+    st.session_state.deadline_ts = time.time() + 210  # 3.5 minutes = 210 seconds
     st.session_state.start_time = time.time()  # Track when user started
 
 # fire auto-return when time is up (exactly once)
@@ -390,7 +390,7 @@ if 'interaction_logger' not in st.session_state:
             st.secrets, logger_config, participant_id=prolific_id
         )
         st.session_state.interaction_logger.condition_name = condition_name
-        print(f"✅ DEBUG: Logger initialized with Prolific ID: {prolific_id}")
+        print(f"DEBUG: Logger initialized with Prolific ID: {prolific_id}")
     
     # Add compatibility methods for old data_logger API
     def log_interaction_compat(interaction_type: str, content: Dict):
@@ -439,7 +439,7 @@ if 'interaction_logger' not in st.session_state:
         logger_inst = st.session_state.interaction_logger
         # Add feedback to session data
         logger_inst.session_data["feedback"] = feedback_data
-        print(f"✅ DEBUG: Feedback captured: {feedback_data}")
+        print(f"DEBUG: Feedback captured: {feedback_data}")
     
     def build_final_data_compat():
         """Compatibility wrapper"""
@@ -750,12 +750,12 @@ Rate yourself on these traits (1 = Disagree strongly, 7 = Agree strongly):""")
                     for trait, scores in trait_scores.items()
                 }
                 
-                print(f"\n📊 DEBUG: Big Five Scores Calculated:")
+                print(f"\nDEBUG: Big Five Scores Calculated:")
                 for trait, score in personality.items():
                     print(f"   {trait.capitalize()}: {score:.2f}")
                 
                 save_personality_to_session(personality)
-                print(f"✅ DEBUG: Personality saved to session state")
+                print(f"DEBUG: Personality saved to session state")
                 
                 # CRITICAL: Refresh config with new personality adjustments
                 from ab_config import config
@@ -814,7 +814,7 @@ Rate yourself on these traits (1 = Disagree strongly, 7 = Agree strongly):""")
                     temp_final = min(temp_base + temp_boost, 0.7)
                     logger.set_generation_metadata("gpt-4o-mini", temp_base, temp_final, temp_boost_applied)
                     
-                    print(f"✅ DEBUG: Logger session started - Prolific ID: {prolific_id}")
+                    print(f"DEBUG: Logger session started - Prolific ID: {prolific_id}")
                 
                 st.success("Personality profile saved! The assistant will now adapt to your preferences.")
                 st_rerun()
@@ -874,7 +874,7 @@ if 'interaction_logger' in st.session_state and 'logger_session_started' not in 
     logger.set_generation_metadata("gpt-4o-mini", temp_base, temp_final, temp_boost_applied)
     
     st.session_state.logger_session_started = True
-    print(f"✅ DEBUG: Logger session initialized - Prolific ID: {prolific_id}, Condition: {condition_preset}")
+    print(f"DEBUG: Logger session initialized - Prolific ID: {prolific_id}, Condition: {condition_preset}")
 
 # Initialize loan assistant
 if 'loan_assistant' not in st.session_state:
@@ -1060,7 +1060,7 @@ if len(st.session_state.chat_history) == 0:
 # Check if current field has clickable options for placeholder
 current_field = getattr(st.session_state.loan_assistant, 'current_field', None)
 if current_field and current_field in field_options:
-    placeholder_text = "💬 Type your answer or use the clickable buttons below..."
+    placeholder_text = "Type your answer or use the clickable buttons below..."
 else:
     placeholder_text = "Type your message to Luna..."
 
@@ -1073,13 +1073,13 @@ with st.form("chat_form", clear_on_submit=True):
 
 # Add helper text for clickable features
 if current_field and current_field in field_options:
-    st.markdown('<div style="text-align: center; color: #666; font-size: 0.85em; margin-top: 5px;">👆 Use the clickable buttons below for faster selection!</div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align: center; color: #666; font-size: 0.85em; margin-top: 5px;">Use the clickable buttons below for faster selection!</div>', unsafe_allow_html=True)
 
 # Show clickable options right after chat input (for immediate visibility)
 if current_field and current_field in field_options:
     st.markdown("---")
-    st.markdown(f"### 🎯 Quick Select: {current_field.replace('_', ' ').title()}")
-    st.markdown("**💡 Click any option below instead of typing:**")
+    st.markdown(f"### Quick Select: {current_field.replace('_', ' ').title()}")
+    st.markdown("**Click any option below instead of typing:**")
     st.markdown('<div class="options-container">', unsafe_allow_html=True)
     
     options = field_options[current_field]
@@ -1208,7 +1208,7 @@ current_state = st.session_state.loan_assistant.conversation_state.value
 if current_state == 'greeting':
     col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("👋 Start Application", key="quick_start"):
+        if st.button("Start Application", key="quick_start"):
             response = st.session_state.loan_assistant.handle_message("start")
             st.session_state.chat_history.append(("start", response))
             st_rerun()
@@ -1252,7 +1252,7 @@ elif current_state == 'complete':
                 st.session_state.chat_history.append(("explain", response))
                 st_rerun()
         with col2:
-            if st.button("🔧 What If Analysis", key="quick_whatif", width="stretch"):
+            if st.button("What If Analysis", key="quick_whatif", width="stretch"):
                 # Turn on What‑if Lab and prompt guidance
                 try:
                     st.session_state.loan_assistant.show_what_if_lab = True
@@ -1279,8 +1279,8 @@ if current_state == 'collecting_info' and hasattr(st.session_state.loan_assistan
     
     if current_field in field_options:
         st.markdown("---")
-        st.markdown(f"### 🎯 Quick Select: {current_field.replace('_', ' ').title()}")
-        st.markdown("**💡 Click any option below instead of typing:**")
+        st.markdown(f"### Quick Select: {current_field.replace('_', ' ').title()}")
+        st.markdown("**Click any option below instead of typing:**")
         st.markdown('<div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 15px; border-radius: 10px; margin: 10px 0; border: 1px solid #dee2e6;">', unsafe_allow_html=True)
         
         options = field_options[current_field]
@@ -1330,7 +1330,7 @@ if current_state == 'collecting_info' and hasattr(st.session_state.loan_assistan
 # Feedback section (appears after application is complete)
 if current_state == 'complete' and len(st.session_state.chat_history) > 5:
     st.markdown("---")
-    st.markdown("### 📝 Your Feedback")
+    st.markdown("### Your Feedback")
     st.markdown("Help us improve by sharing your experience:")
     
     with st.form("feedback_form"):
@@ -1341,7 +1341,7 @@ if current_state == 'complete' and len(st.session_state.chat_history) > 5:
                 "How would you rate your experience?",
                 options=[1, 2, 3, 4, 5],
                 value=3,
-                format_func=lambda x: "⭐" * x
+                format_func=lambda x: "★" * x
             )
             
             ease_of_use = st.radio(
@@ -1365,7 +1365,7 @@ if current_state == 'complete' and len(st.session_state.chat_history) > 5:
             placeholder="“What feature would help you most next time?”\n“What would make this agent's explanations more useful?”..."
         )
         
-        submitted = st.form_submit_button("Submit Feedback 🚀")
+        submitted = st.form_submit_button("Submit Feedback")
         
         if submitted:
             # Calculate completion percentage
@@ -1441,10 +1441,10 @@ if current_state == 'complete' and len(st.session_state.chat_history) > 5:
                     anthropomorphism_level=anthro_level,
                     personality_adaptation=personality_mode
                 )
-                print(f"📊 Logged treatment: {condition_label}, warmth={final_config.get('warmth'):.2f}, empathy={final_config.get('empathy'):.2f}")
+                print(f"Logged treatment: {condition_label}, warmth={final_config.get('warmth'):.2f}, empathy={final_config.get('empathy'):.2f}")
                 
             except Exception as e:
-                print(f"⚠️ Failed to record research outcomes: {e}")
+                print(f"Failed to record research outcomes: {e}")
                 import traceback
                 traceback.print_exc()
                 # Don't block user if research tracking fails
@@ -1457,7 +1457,7 @@ if current_state == 'complete' and len(st.session_state.chat_history) > 5:
                 # Save complete session data to GitHub
                 logger_saved = logger.save_to_github()
                 if not logger_saved:
-                    print("⚠️ Failed to save session log to GitHub")
+                    print("Failed to save session log to GitHub")
             
             # Save feedback
             try:
@@ -1513,11 +1513,11 @@ if current_state == 'complete' and len(st.session_state.chat_history) > 5:
         """)
         
         elapsed_time = time.time() - st.session_state.get("start_time", time.time())
-        if elapsed_time >= 180:  # 3 minutes minimum engagement
+        if elapsed_time >= 120:  # 2 minutes minimum engagement
             if st.button("Continue to Survey", type="primary", width="stretch", key="return_to_qualtrics"):
                 back_to_survey(done_flag=True)
         else:
-            remaining = int(180 - elapsed_time)
+            remaining = int(120 - elapsed_time)
             st.info(f"Please wait {remaining} seconds before continuing to the survey.")
     
     elif st.session_state.get("feedback_submitted", False):
@@ -1530,13 +1530,13 @@ if current_state == 'complete' and len(st.session_state.chat_history) > 5:
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666; padding: 20px;'>
-    <p>🏦 AI Loan Assistant</p>
-    <p><small>🔬 Algorithm trained on the Adult (Census Income) dataset with 32,561 records from the UCI Machine Learning Repository</small></p>
+    <p>AI Loan Assistant</p>
+    <p><small>Algorithm trained on the Adult (Census Income) dataset with 32,561 records from the UCI Machine Learning Repository</small></p>
 </div>
 """, unsafe_allow_html=True)
 
 # Expandable dataset details
-with st.expander("📊 Dataset Information - Adult Census Income Dataset"):
+with st.expander("Dataset Information - Adult Census Income Dataset"):
     st.markdown("""
     **Dataset Overview:**
     
@@ -1578,7 +1578,7 @@ with st.expander("📊 Dataset Information - Adult Census Income Dataset"):
 # Only show when HICXAI_DEBUG_MODE environment variable is set to 'true'
 if os.getenv('HICXAI_DEBUG_MODE', 'false').lower() == 'true':
     st.markdown("---")
-    st.markdown("### 🧪 A/B Testing Information (Debug Mode)")
+    st.markdown("### A/B Testing Information (Debug Mode)")
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown(f"**Version:** {config.version}")
@@ -1587,8 +1587,8 @@ if os.getenv('HICXAI_DEBUG_MODE', 'false').lower() == 'true':
         st.markdown(f"**Assistant:** {config.assistant_name}")
         st.markdown(f"**SHAP Visuals:** {config.show_shap_visualizations}")
     with col3:
-        st.markdown(f"**Concurrent Testing:** ✅ Enabled")
-        st.markdown(f"**User Isolation:** ✅ Session-based")
+        st.markdown(f"**Concurrent Testing:** Enabled")
+        st.markdown(f"**User Isolation:** Session-based")
 
 # Sticky return footer (only show after 2 minutes of engagement)
 if st.session_state.get("return_raw"):
@@ -1600,7 +1600,7 @@ if st.session_state.get("return_raw"):
         with col_a:
             remaining = max(0, int(st.session_state.deadline_ts - time.time()))
             m, s = divmod(remaining, 60)
-            st.caption(f"⏱️ Up to {m}:{s:02d} remaining. You can return anytime.")
+            st.caption(f"Up to {m}:{s:02d} remaining. You can return anytime.")
         with col_b:
             if st.button("Continue to survey", type="primary", width="stretch", key="footer_return"):
                 back_to_survey()
@@ -1611,4 +1611,4 @@ if st.session_state.get("return_raw"):
         m, s = divmod(wait_time, 60)
         remaining_deadline = max(0, int(st.session_state.deadline_ts - time.time()))
         md, sd = divmod(remaining_deadline, 60)
-        st.caption(f"⏱️ Session time: up to {md}:{sd:02d} remaining • Continue button appears in: {m}:{s:02d}")
+        st.caption(f"Session time: up to {md}:{sd:02d} remaining • Continue button appears in: {m}:{s:02d}")
