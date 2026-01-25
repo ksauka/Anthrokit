@@ -170,7 +170,6 @@ def _load_or_train_model():
     
     return clf
 
-    # (Removed duplicate __init__; initialization handled above)
 
     def handle_user_input(self, user_input):
         """Handle user input for XAI explanations (used by loan assistant for explanations)"""

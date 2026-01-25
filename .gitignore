@@ -1,0 +1,132 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.Zone.Identifier
+
+# Project specific
+XAIagent/logs/*.txt
+XAIagent/logs/*.log
+XAIagent/feedback/*.json
+!XAIagent/models/.gitkeep
+!XAIagent/logs/.gitkeep
+!XAIagent/feedback/.gitkeep
+
+# Models are stored in Dropbox (not in git)
+XAIagent/models/*.pkl
+XAIagent/models/*.pth
+XAIagent/models/*_best.pth
+XAIagent/models/focused_xai_*
+XAIagent/models/intent_*
+XAIagent/models/xagent_*
+
+# Development artifacts (tests, migration docs, temp docs)
+test_prompt_migration.py
+PROMPT_MIGRATION_COMPLETE.md
+PRE_COMMIT_CHECKLIST.md
+XAIagent/docs/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Environment variables (sensitive)
+.env
+.env.local
+.env.*.local
+XAIagent/.env
+XAIagent/.env.local
+
+# HuggingFace
+.huggingface/token
+
+# Documentation and markdown files
+*.md
+!README.md
+
+# Temporary files
+*.tmp
+*.backup
+*.old
+*.bak
+*~
+*.swp
+*.swo
+.*.swp
+.*.swo
+poetry.lock
+*:Zone.Identifier
+*.Zone.Identifier
+temp_*
+tmp_*
+scratch_*
+.temp/
+.tmp/
+.cache/
+
+# Test files
+test_*.py
+*_test.py
+validate_*.py
+check_*.py
+
+# Experiment and temporary files
+temperature_sensitivity_experiment.py
+experiment_results_*.json
+stage_a_*.json
+stage_b_*.json
+*_900gen.json
+*_900gen.png
+temperature_boost_optimization*.png
+
+# Personal scripts
+XAIagent/scripts/merge_app_qualtrics_data.py
+
+# Temporary utility scripts (one-time use)
+XAIagent/delete_old_models_dropbox.py
+XAIagent/clean_dropbox_models.py
+XAIagent/generate_refresh_token.py
+XAIagent/generate_metadata.py
+XAIagent/upload_models_to_dropbox.py
+
+# Interaction logs (sensitive user data)
+interaction_logs/
+XAIagent/interaction_logs/
+*.jsonl
+
+# Git itself
+.gitignore
+.streamlit/secrets.toml

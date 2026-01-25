@@ -377,9 +377,23 @@ def create_logger_from_secrets(secrets, config, participant_id: str = None) -> I
     if not participant_id:
         raise ValueError("participant_id (Prolific ID) is required - no auto-generation allowed")
     
-    # Get GitHub credentials from secrets
-    github_token = secrets.get("GITHUB_TOKEN", None)
-    github_repo = secrets.get("GITHUB_REPO", None)
+    # Get GitHub credentials from secrets or environment variables
+    # Try st.secrets first (local Streamlit), fall back to env vars (HF Spaces)
+    github_token = None
+    github_repo = None
+    
+    try:
+        github_token = secrets.get("GITHUB_TOKEN", None)
+        github_repo = secrets.get("GITHUB_REPO", None)
+    except Exception:
+        # st.secrets not available or empty (e.g., on HF Spaces)
+        pass
+    
+    # Fall back to environment variables if not in secrets
+    if not github_token:
+        github_token = os.getenv("GITHUB_TOKEN", None)
+    if not github_repo:
+        github_repo = os.getenv("GITHUB_REPO", None)
     
     # Create logger with GitHub credentials and Prolific ID
     logger = InteractionLogger(

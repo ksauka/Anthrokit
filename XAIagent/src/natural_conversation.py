@@ -47,7 +47,6 @@ def _ensure_env_loaded():
                     k, v = [p.strip() for p in line.split("=", 1)]
                     if k == "OPENAI_API_KEY" and v:
                         os.environ[k] = v
-                        print(f"🔑 DEBUG: Loaded OPENAI_API_KEY: {v[:20]}...")
                     elif k not in os.environ:
                         os.environ[k] = v
     except Exception as e:
